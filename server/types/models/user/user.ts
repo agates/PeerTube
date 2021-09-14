@@ -1,4 +1,4 @@
-import { UserModel } from '../../../models/account/user'
+import { UserModel } from '@server/models/account/user'
 import { PickWith, PickWithOpt } from '@shared/core-utils'
 import {
   MAccount,
@@ -11,7 +11,7 @@ import {
 } from '../account'
 import { MNotificationSetting, MNotificationSettingFormattable } from './user-notification-setting'
 import { AccountModel } from '@server/models/account/account'
-import { MChannelFormattable } from '../video/video-channels'
+import { MChannelFormattable } from '@server/types/models'
 import { MVideoPlaylist } from '@server/types/models'
 
 type Use<K extends keyof UserModel, M> = PickWith<UserModel, K, M>
