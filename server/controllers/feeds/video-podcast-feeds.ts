@@ -1,4 +1,5 @@
 import express from 'express'
+import { maxBy } from 'lodash'
 import { extname } from 'path'
 import { Feed } from '@peertube/feed'
 import { CustomTag, CustomXMLNS, LiveItemStatus } from '@peertube/feed/lib/typings'
@@ -146,8 +147,18 @@ async function generatePodcastItem (options: {
     href: account.getClientUrl()
   }
 
+  const attributes = getCommonVideoFeedAttributes(video)
+  const guid = liveItem ? `${video.uuid}_${video.publishedAt.toISOString()}` : attributes.link
+  let personImage
+
+  if (account.Actor.hasImage(ActorImageType.AVATAR)) {
+    const avatar = maxBy(account.Actor.Avatars, 'width')
+    personImage = WEBSERVER.URL + avatar.getStaticPath()
+  }
+
   return {
-    ...getCommonVideoFeedAttributes(video),
+    guid,
+    ...attributes,
 
     trackers: video.getTrackerUrls(),
 
@@ -156,9 +167,7 @@ async function generatePodcastItem (options: {
       {
         ...author,
 
-        img: account.Actor.hasImage(ActorImageType.AVATAR)
-          ? WEBSERVER.URL + account.Actor.Avatars[0].getStaticPath()
-          : undefined
+        img: personImage
       }
     ],
 
