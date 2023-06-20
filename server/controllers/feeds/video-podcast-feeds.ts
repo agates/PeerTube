@@ -147,9 +147,12 @@ async function generatePodcastItem (options: {
     href: account.getClientUrl()
   }
 
-  const attributes = getCommonVideoFeedAttributes(video)
-  const guid = liveItem ? `${video.uuid}_${video.publishedAt.toISOString()}` : attributes.link
-  let personImage
+  const commonAttributes = getCommonVideoFeedAttributes(video)
+  const guid = liveItem
+    ? `${video.uuid}_${video.publishedAt.toISOString()}`
+    : commonAttributes.link
+
+  let personImage: string
 
   if (account.Actor.hasImage(ActorImageType.AVATAR)) {
     const avatar = maxBy(account.Actor.Avatars, 'width')
@@ -158,7 +161,7 @@ async function generatePodcastItem (options: {
 
   return {
     guid,
-    ...attributes,
+    ...commonAttributes,
 
     trackers: video.getTrackerUrls(),
 
