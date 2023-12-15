@@ -72,6 +72,11 @@ async function generateVideoPodcastFeed (req: express.Request, res: express.Resp
     videoChannelId: videoChannel?.id
   })
 
+  // If the first video in the channel is a film, that will be the only video in the feed
+  // Yes, this is a hack :)
+  const isFilm: boolean = data.length > 0 && data[data.length - 1].category === 2
+  const videos = isFilm ? [ data[data.length - 1] ] : data
+
   const customTags: CustomTag[] = await Hooks.wrapObject(
     [],
     'filter:feed.podcast.channel.create-custom-tags.result',
@@ -84,11 +89,11 @@ async function generateVideoPodcastFeed (req: express.Request, res: express.Resp
   )
 
   const feed = initFeed({
-    name,
-    description,
-    link,
+    name: isFilm ? videos[0].name : name,
+    description: isFilm ? videos[0].description : description,
+    link: isFilm ? videos[0].url : link,
     isPodcast: true,
-    imageUrl,
+    imageUrl: isFilm ? WEBSERVER.URL + videos[0].getPreviewStaticPath() : imageUrl,
 
     locked: email
       ? { isLocked: true, email } // Default to true because we have no way of offering a redirect yet
@@ -97,7 +102,7 @@ async function generateVideoPodcastFeed (req: express.Request, res: express.Resp
     person: [ { name: userName, href: accountLink, img: accountImageUrl } ],
     resourceType: 'videos',
     queryString: new URL(WEBSERVER.URL + req.url).search,
-    medium: 'video',
+    medium: isFilm ? 'film' : 'video',
     customXMLNS,
     customTags
   })
