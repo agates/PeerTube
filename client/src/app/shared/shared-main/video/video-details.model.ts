@@ -4,10 +4,10 @@ import {
   VideoConstant,
   VideoDetails as VideoDetailsServerModel,
   VideoFile,
-  VideoState,
+  VideoStateType,
   VideoStreamingPlaylist,
   VideoStreamingPlaylistType
-} from '@shared/models'
+} from '@peertube/peertube-models'
 import { Video } from './video.model'
 
 export class VideoDetails extends Video implements VideoDetailsServerModel {
@@ -20,12 +20,14 @@ export class VideoDetails extends Video implements VideoDetailsServerModel {
   downloadEnabled: boolean
 
   waitTranscoding: boolean
-  state: VideoConstant<VideoState>
+  state: VideoConstant<VideoStateType>
 
   likesPercent: number
   dislikesPercent: number
 
   trackerUrls: string[]
+
+  inputFileUpdatedAt: Date | string
 
   files: VideoFile[]
   streamingPlaylists: VideoStreamingPlaylist[]
@@ -40,6 +42,8 @@ export class VideoDetails extends Video implements VideoDetailsServerModel {
     this.support = hash.support
     this.commentsEnabled = hash.commentsEnabled
     this.downloadEnabled = hash.downloadEnabled
+
+    this.inputFileUpdatedAt = hash.inputFileUpdatedAt
 
     this.trackerUrls = hash.trackerUrls
 

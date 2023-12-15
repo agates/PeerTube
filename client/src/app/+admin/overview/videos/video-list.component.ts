@@ -3,13 +3,13 @@ import { finalize } from 'rxjs/operators'
 import { Component, OnInit, ViewChild } from '@angular/core'
 import { ActivatedRoute, Router } from '@angular/router'
 import { AuthService, ConfirmService, Notifier, RestPagination, RestTable } from '@app/core'
-import { prepareIcu } from '@app/helpers'
+import { formatICU, getAbsoluteAPIUrl } from '@app/helpers'
 import { AdvancedInputFilter } from '@app/shared/shared-forms'
 import { DropdownAction, Video, VideoService } from '@app/shared/shared-main'
 import { VideoBlockComponent, VideoBlockService } from '@app/shared/shared-moderation'
 import { VideoActionsDisplayType } from '@app/shared/shared-video-miniature'
-import { getAllFiles } from '@shared/core-utils'
-import { UserRight, VideoFile, VideoPrivacy, VideoState, VideoStreamingPlaylistType } from '@shared/models'
+import { getAllFiles } from '@peertube/peertube-core-utils'
+import { UserRight, VideoFile, VideoPrivacy, VideoState, VideoStreamingPlaylistType } from '@peertube/peertube-models'
 import { VideoAdminService } from './video-admin.service'
 
 @Component({
@@ -99,8 +99,8 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
           iconName: 'cog'
         },
         {
-          label: $localize`Run WebTorrent transcoding`,
-          handler: videos => this.runTranscoding(videos, 'webtorrent'),
+          label: $localize`Run Web Video transcoding`,
+          handler: videos => this.runTranscoding(videos, 'web-video'),
           isDisplayed: videos => videos.every(v => v.canRunTranscoding(this.authUser)),
           iconName: 'cog'
         },
@@ -111,8 +111,8 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
           iconName: 'delete'
         },
         {
-          label: $localize`Delete WebTorrent files`,
-          handler: videos => this.removeVideoFiles(videos, 'webtorrent'),
+          label: $localize`Delete Web Video files`,
+          handler: videos => this.removeVideoFiles(videos, 'web-videos'),
           isDisplayed: videos => videos.every(v => v.canRemoveFiles(this.authUser)),
           iconName: 'delete'
         }
@@ -150,14 +150,14 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
     return video.state.id === VideoState.TO_IMPORT
   }
 
-  isHLS (video: Video) {
+  hasHLS (video: Video) {
     const p = video.streamingPlaylists.find(p => p.type === VideoStreamingPlaylistType.HLS)
     if (!p) return false
 
     return p.files.length !== 0
   }
 
-  isWebTorrent (video: Video) {
+  hasWebVideos (video: Video) {
     return video.files.length !== 0
   }
 
@@ -166,7 +166,7 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
 
     const files = getAllFiles(video)
 
-    return files.some(f => !f.fileUrl.startsWith(window.location.origin))
+    return files.some(f => !f.fileUrl.startsWith(getAbsoluteAPIUrl()))
   }
 
   canRemoveOneFile (video: Video) {
@@ -176,14 +176,14 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
   getFilesSize (video: Video) {
     let files = video.files
 
-    if (this.isHLS(video)) {
+    if (this.hasHLS(video)) {
       files = files.concat(video.streamingPlaylists[0].files)
     }
 
     return files.reduce((p, f) => p += f.size, 0)
   }
 
-  async removeVideoFile (video: Video, file: VideoFile, type: 'hls' | 'webtorrent') {
+  async removeVideoFile (video: Video, file: VideoFile, type: 'hls' | 'web-videos') {
     const message = $localize`Are you sure you want to delete this ${file.resolution.label} file?`
     const res = await this.confirmService.confirm(message, $localize`Delete file`)
     if (res === false) return
@@ -219,9 +219,9 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
   }
 
   private async removeVideos (videos: Video[]) {
-    const message = prepareIcu($localize`Are you sure you want to delete {count, plural, =1 {this video} other {these {count} videos}}?`)(
-      { count: videos.length },
-      $localize`Are you sure you want to delete these ${videos.length} videos?`
+    const message = formatICU(
+      $localize`Are you sure you want to delete {count, plural, =1 {this video} other {these {count} videos}}?`,
+      { count: videos.length }
     )
 
     const res = await this.confirmService.confirm(message, $localize`Delete`)
@@ -231,9 +231,9 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
       .subscribe({
         next: () => {
           this.notifier.success(
-            prepareIcu($localize`Deleted {count, plural, =1 {1 video} other {{count} videos}}.`)(
-              { count: videos.length },
-              $localize`Deleted ${videos.length} videos.`
+            formatICU(
+              $localize`Deleted {count, plural, =1 {1 video} other {{count} videos}}.`,
+              { count: videos.length }
             )
           )
 
@@ -249,9 +249,9 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
       .subscribe({
         next: () => {
           this.notifier.success(
-            prepareIcu($localize`Unblocked {count, plural, =1 {1 video} other {{count} videos}}.`)(
-              { count: videos.length },
-              $localize`Unblocked ${videos.length} videos.`
+            formatICU(
+              $localize`Unblocked {count, plural, =1 {1 video} other {{count} videos}}.`,
+              { count: videos.length }
             )
           )
 
@@ -262,20 +262,20 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
       })
   }
 
-  private async removeVideoFiles (videos: Video[], type: 'hls' | 'webtorrent') {
+  private async removeVideoFiles (videos: Video[], type: 'hls' | 'web-videos') {
     let message: string
 
     if (type === 'hls') {
       // eslint-disable-next-line max-len
-      message = prepareIcu($localize`Are you sure you want to delete {count, plural, =1 {1 HLS streaming playlist} other {{count} HLS streaming playlists}}?`)(
-        { count: videos.length },
-        $localize`Are you sure you want to delete ${videos.length} HLS streaming playlists?`
+      message = formatICU(
+        $localize`Are you sure you want to delete {count, plural, =1 {1 HLS streaming playlist} other {{count} HLS streaming playlists}}?`,
+        { count: videos.length }
       )
     } else {
       // eslint-disable-next-line max-len
-      message = prepareIcu($localize`Are you sure you want to delete WebTorrent files of {count, plural, =1 {1 video} other {{count} videos}}?`)(
-        { count: videos.length },
-        $localize`Are you sure you want to delete WebTorrent files of ${videos.length} videos?`
+      message = formatICU(
+        $localize`Are you sure you want to delete Web Video files of {count, plural, =1 {1 video} other {{count} videos}}?`,
+        { count: videos.length }
       )
     }
 
@@ -293,8 +293,8 @@ export class VideoListComponent extends RestTable <Video> implements OnInit {
       })
   }
 
-  private runTranscoding (videos: Video[], type: 'hls' | 'webtorrent') {
-    this.videoService.runTranscoding(videos.map(v => v.id), type)
+  private runTranscoding (videos: Video[], type: 'hls' | 'web-video') {
+    this.videoService.runTranscoding({ videoIds: videos.map(v => v.id), type, askForForceTranscodingIfNeeded: false })
       .subscribe({
         next: () => {
           this.notifier.success($localize`Transcoding jobs created.`)

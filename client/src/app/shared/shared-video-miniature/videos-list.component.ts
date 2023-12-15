@@ -15,8 +15,8 @@ import {
 } from '@app/core'
 import { GlobalIconName } from '@app/shared/shared-icons'
 import { logger } from '@root-helpers/logger'
-import { isLastMonth, isLastWeek, isThisMonth, isToday, isYesterday } from '@shared/core-utils'
-import { ResultList, UserRight, VideoSortField } from '@shared/models'
+import { isLastMonth, isLastWeek, isThisMonth, isToday, isYesterday } from '@peertube/peertube-core-utils'
+import { ResultList, UserRight, VideoSortField } from '@peertube/peertube-models'
 import { Syndication, Video } from '../shared-main'
 import { VideoFilters, VideoFilterScope } from './video-filters.model'
 import { MiniatureDisplayOptions } from './video-miniature.component'
@@ -112,6 +112,8 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
   private lastQueryLength: number
 
   private videoRequests = new Subject<{ reset: boolean, obs: Observable<ResultList<Video>> }>()
+
+  private alreadyDoneSearch = false
 
   constructor (
     private notifier: Notifier,
@@ -279,6 +281,8 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
       }
     ]
 
+    let onlyOlderPeriod = true
+
     for (const video of this.videos) {
       const publishedDate = video.publishedAt
 
@@ -288,6 +292,8 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
         if (currentGroupedDate <= period.value && period.validator(publishedDate)) {
 
           if (currentGroupedDate !== period.value) {
+            if (period.value !== GroupDate.OLDER) onlyOlderPeriod = false
+
             currentGroupedDate = period.value
             this.groupedDates[video.id] = currentGroupedDate
           }
@@ -296,6 +302,9 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
         }
       }
     }
+
+    // No need to group by date, there is only "Older" period available
+    if (onlyOlderPeriod) this.groupedDates = {}
   }
 
   getCurrentGroupedDateLabel (video: Video) {
@@ -403,8 +412,9 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
 
   private subscribeToSearchChange () {
     this.routeSub = this.route.queryParams.subscribe(param => {
-      if (!param['search']) return
+      if (!this.alreadyDoneSearch && !param['search']) return
 
+      this.alreadyDoneSearch = true
       this.filters.load({ search: param['search'] })
       this.onFiltersChanged(true)
     })
@@ -419,6 +429,7 @@ export class VideosListComponent implements OnInit, OnChanges, OnDestroy {
           this.lastQueryLength = data.length
 
           if (reset) this.videos = []
+
           this.videos = this.videos.concat(data)
 
           if (this.groupByDate) this.buildGroupedDateLabels()

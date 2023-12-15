@@ -1,6 +1,6 @@
 import './test-embed.scss'
-import { PeerTubeResolution, PlayerEventType } from '../player/definitions'
-import { PeerTubePlayer } from '../player/player'
+import { PeerTubeResolution, PlayerEventType } from '../embed-player-api/definitions'
+import { PeerTubePlayer } from '../embed-player-api/player'
 import { logger } from '../../root-helpers'
 
 window.addEventListener('load', async () => {
@@ -14,9 +14,9 @@ window.addEventListener('load', async () => {
   const iframe = document.createElement('iframe')
   iframe.src = isPlaylist
     ? `/video-playlists/embed/${elementId}?api=1`
-    : `/videos/embed/${elementId}?api=1`
+    : `/videos/embed/${elementId}?api=1&waitPasswordFromEmbedAPI=1`
 
-  iframe.sandbox.add('allow-same-origin', 'allow-scripts', 'allow-popups')
+  iframe.sandbox.add('allow-same-origin', 'allow-scripts', 'allow-popups', 'allow-forms')
 
   const mainElement = document.querySelector('#host')
   mainElement.appendChild(iframe)
@@ -27,6 +27,8 @@ window.addEventListener('load', async () => {
   (window as any)['player'] = player
 
   logger.info('Awaiting player ready...')
+  await player.setVideoPassword('toto')
+
   await player.ready
   logger.info('Player is ready.')
 
@@ -41,10 +43,12 @@ window.addEventListener('load', async () => {
     player.addEventListener(e as PlayerEventType, (param) => logger.info(`PLAYER: event '${e}' received`, { param }))
     logger.info(`PLAYER: now listening for event '${e}'`)
 
-    player.getCurrentPosition()
-      .then(position => {
-        document.getElementById('playlist-position').innerHTML = position + ''
-      })
+    if (isPlaylist) {
+      player.getCurrentPosition()
+        .then(position => {
+          document.getElementById('playlist-position').innerHTML = position + ''
+        })
+    }
   })
 
   let playbackRates: number[] = []

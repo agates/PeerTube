@@ -16,15 +16,16 @@
   [value]="registrationTokens" [paginator]="totalRecords > 0" [totalRecords]="totalRecords" [rows]="rowsPerPage" [first]="pagination.start"
   [rowsPerPageOptions]="rowsPerPageOptions" [sortField]="sort.field" [sortOrder]="sort.order"
   [lazy]="true" (onLazyLoad)="loadLazy($event)"
-  [showCurrentPageReport]="true" i18n-currentPageReportTemplate
-  currentPageReportTemplate="Showing {{'{first}'}} to {{'{last}'}} of {{'{totalRecords}'}} registration tokens"
+  [showCurrentPageReport]="true" [currentPageReportTemplate]="getPaginationTemplate()"
 >
   <ng-template pTemplate="header">
     <tr>
-      <th style="width: 120px;"></th>
-      <th i18n>Token</th>
-      <th style="width: 150px;" i18n pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
-      <th style="width: 160px;" i18n>Associated runners</th>
+      <th scope="col" style="width: 120px;">
+        <span i18n class="visually-hidden">Actions</span>
+      </th>
+      <th scope="col" i18n>Token</th>
+      <th scope="col" style="width: 150px;" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+      <th scope="col" style="width: 160px;" i18n>Associated runners</th>
     </tr>
   </ng-template>
 
@@ -45,7 +46,14 @@
         ></my-action-dropdown>
       </td>
 
-      <td>{{ registrationToken.registrationToken }}</td>
+      <td>
+        {{ registrationToken.registrationToken }}
+
+        <my-copy-button
+          [value]="registrationToken.registrationToken" i18n-notification notification="Registration token copied"
+          i18n-title title="Copy registration token"
+        ></my-copy-button>
+      </td>
 
       <td>{{ registrationToken.createdAt | date: 'short'  }}</td>
 

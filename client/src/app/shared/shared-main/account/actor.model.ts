@@ -1,5 +1,5 @@
 import { getAbsoluteAPIUrl, getAPIHost } from '@app/helpers'
-import { Actor as ServerActor, ActorImage } from '@shared/models'
+import { Actor as ServerActor, ActorImage } from '@peertube/peertube-models'
 
 export abstract class Actor implements ServerActor {
   id: number
@@ -12,9 +12,6 @@ export abstract class Actor implements ServerActor {
   followersCount: number
 
   createdAt: Date | string
-
-  // TODO: remove, deprecated in 4.2
-  avatar: never
 
   avatars: ActorImage[]
 

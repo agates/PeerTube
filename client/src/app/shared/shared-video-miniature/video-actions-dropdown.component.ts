@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, Output, ViewChild } from '@a
 import { AuthService, ConfirmService, Notifier, ScreenService, ServerService } from '@app/core'
 import { BlocklistService, VideoBlockComponent, VideoBlockService, VideoReportComponent } from '@app/shared/shared-moderation'
 import { NgbDropdown } from '@ng-bootstrap/ng-bootstrap'
-import { VideoCaption } from '@shared/models'
+import { VideoCaption } from '@peertube/peertube-models'
 import {
   Actor,
   DropdownAction,
@@ -198,8 +198,8 @@ export class VideoActionsDropdownComponent implements OnChanges {
     return this.video.canRemoveFiles(this.user)
   }
 
-  canRunTranscoding () {
-    return this.video.canRunTranscoding(this.user)
+  canRunForcedTranscoding () {
+    return this.video.canRunForcedTranscoding(this.user)
   }
 
   /* Action handlers */
@@ -273,7 +273,7 @@ export class VideoActionsDropdownComponent implements OnChanges {
         })
   }
 
-  async removeVideoFiles (video: Video, type: 'hls' | 'webtorrent') {
+  async removeVideoFiles (video: Video, type: 'hls' | 'web-videos') {
     const confirmMessage = $localize`Do you really want to remove "${this.video.name}" files?`
 
     const res = await this.confirmService.confirm(confirmMessage, $localize`Remove "${this.video.name}" files`)
@@ -290,11 +290,11 @@ export class VideoActionsDropdownComponent implements OnChanges {
       })
   }
 
-  runTranscoding (video: Video, type: 'hls' | 'webtorrent') {
-    this.videoService.runTranscoding([ video.id ], type)
+  runTranscoding (video: Video, type: 'hls' | 'web-video') {
+    this.videoService.runTranscoding({ videoIds: [ video.id ], type, askForForceTranscodingIfNeeded: true })
       .subscribe({
         next: () => {
-          this.notifier.success($localize`Transcoding jobs created for ${video.name}.`)
+          this.notifier.success($localize`Transcoding jobs created for "${video.name}".`)
           this.transcodingCreated.emit()
         },
 
@@ -390,13 +390,13 @@ export class VideoActionsDropdownComponent implements OnChanges {
         {
           label: $localize`Run HLS transcoding`,
           handler: ({ video }) => this.runTranscoding(video, 'hls'),
-          isDisplayed: () => this.displayOptions.transcoding && this.canRunTranscoding(),
+          isDisplayed: () => this.displayOptions.transcoding && this.canRunForcedTranscoding(),
           iconName: 'cog'
         },
         {
-          label: $localize`Run WebTorrent transcoding`,
-          handler: ({ video }) => this.runTranscoding(video, 'webtorrent'),
-          isDisplayed: () => this.displayOptions.transcoding && this.canRunTranscoding(),
+          label: $localize`Run Web Video transcoding`,
+          handler: ({ video }) => this.runTranscoding(video, 'web-video'),
+          isDisplayed: () => this.displayOptions.transcoding && this.canRunForcedTranscoding(),
           iconName: 'cog'
         },
         {
@@ -406,8 +406,8 @@ export class VideoActionsDropdownComponent implements OnChanges {
           iconName: 'delete'
         },
         {
-          label: $localize`Delete WebTorrent files`,
-          handler: ({ video }) => this.removeVideoFiles(video, 'webtorrent'),
+          label: $localize`Delete Web Video files`,
+          handler: ({ video }) => this.removeVideoFiles(video, 'web-videos'),
           isDisplayed: () => this.displayOptions.removeFiles && this.canRemoveVideoFiles(),
           iconName: 'delete'
         }

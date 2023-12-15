@@ -35,7 +35,7 @@
             type="text" id="displayName" class="form-control"
             formControlName="displayName" [ngClass]="{ 'input-error': formErrors['displayName'] }"
           >
-          <div *ngIf="formErrors['displayName']" class="form-error">
+          <div *ngIf="formErrors['displayName']" class="form-error" role="alert">
             {{ formErrors['displayName'] }}
           </div>
         </div>
@@ -50,12 +50,12 @@
         <div class="form-group">
           <label i18n for="privacy">Privacy</label>
           <div class="peertube-select-container">
-            <select id="privacy" formControlName="privacy" class="form-control">
-              <option *ngFor="let privacy of videoPlaylistPrivacies" [value]="privacy.id">{{ privacy.label }}</option>
-            </select>
+            <my-select-options
+            labelForId="privacy" [items]="videoPlaylistPrivacies" formControlName="privacy" [clearable]="false"
+          ></my-select-options>
           </div>
 
-          <div *ngIf="formErrors.privacy" class="form-error">
+          <div *ngIf="formErrors.privacy" class="form-error" role="alert">
             {{ formErrors.privacy }}
           </div>
         </div>
@@ -67,7 +67,7 @@
             labelForId="videoChannelIdl" [items]="userVideoChannels" formControlName="videoChannelId"
           ></my-select-channel>
 
-          <div *ngIf="formErrors['videoChannelId']" class="form-error">
+          <div *ngIf="formErrors['videoChannelId']" class="form-error" role="alert">
             {{ formErrors['videoChannelId'] }}
           </div>
         </div>

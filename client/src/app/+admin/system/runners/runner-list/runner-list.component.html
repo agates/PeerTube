@@ -14,17 +14,18 @@
   [value]="runners" [paginator]="totalRecords > 0" [totalRecords]="totalRecords" [rows]="rowsPerPage" [first]="pagination.start"
   [rowsPerPageOptions]="rowsPerPageOptions" [sortField]="sort.field" [sortOrder]="sort.order"
   [lazy]="true" (onLazyLoad)="loadLazy($event)"
-  [showCurrentPageReport]="true" i18n-currentPageReportTemplate
-  currentPageReportTemplate="Showing {{'{first}'}} to {{'{last}'}} of {{'{totalRecords}'}} remote runners"
+  [showCurrentPageReport]="true" [currentPageReportTemplate]="getPaginationTemplate()"
 >
   <ng-template pTemplate="header">
     <tr>
-      <th style="width: 120px;"></th>
-      <th i18n>Name</th>
-      <th i18n>Description</th>
-      <th i18n>IP</th>
-      <th i18n>Last contact</th>
-      <th style="width: 150px;" i18n pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+      <th scope="col" style="width: 120px;">
+        <span i18n class="visually-hidden">Actions</span>
+      </th>
+      <th scope="col" i18n>Name</th>
+      <th scope="col" i18n>Description</th>
+      <th scope="col" i18n>IP</th>
+      <th scope="col" i18n>Last contact</th>
+      <th scope="col" style="width: 150px;" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
     </tr>
   </ng-template>
 

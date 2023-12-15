@@ -2,7 +2,7 @@ import { concat, forkJoin, merge } from 'rxjs'
 import { Component, Input, OnChanges, OnInit } from '@angular/core'
 import { AuthService, Notifier, RedirectService } from '@app/core'
 import { Account, VideoChannel, VideoService } from '@app/shared/shared-main'
-import { FeedFormat } from '@shared/models'
+import { FeedFormat } from '@peertube/peertube-models'
 import { UserSubscriptionService } from './user-subscription.service'
 
 @Component({
@@ -74,6 +74,10 @@ export class SubscribeButtonComponent implements OnInit, OnChanges {
 
   get isBigButton () {
     return this.isUserLoggedIn() && this.videoChannels.length > 1 && this.isAtLeastOneChannelSubscribed
+  }
+
+  get isSingleSubscribe () {
+    return !this.account
   }
 
   ngOnInit () {
@@ -168,7 +172,7 @@ export class SubscribeButtonComponent implements OnInit, OnChanges {
   }
 
   isRemoteSubscribeAvailable () {
-    return !this.isUserLoggedIn()
+    return this.isSingleSubscribe && !this.isUserLoggedIn()
   }
 
   private getChannelHandler (videoChannel: VideoChannel) {

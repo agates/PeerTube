@@ -1,4 +1,3 @@
-import { Hotkey, HotkeysService } from 'angular2-hotkeys'
 import { delay, forkJoin } from 'rxjs'
 import { filter, first, map } from 'rxjs/operators'
 import { DOCUMENT, getLocaleDirection, PlatformLocation } from '@angular/common'
@@ -15,7 +14,9 @@ import {
   ServerService,
   ThemeService,
   User,
-  UserLocalStorageService
+  UserLocalStorageService,
+  Hotkey,
+  HotkeysService
 } from '@app/core'
 import { HooksService } from '@app/core/plugins/hooks.service'
 import { PluginService } from '@app/core/plugins/plugin.service'
@@ -25,10 +26,10 @@ import { CustomModalComponent } from '@app/modal/custom-modal.component'
 import { InstanceConfigWarningModalComponent } from '@app/modal/instance-config-warning-modal.component'
 import { NgbConfig, NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { LoadingBarService } from '@ngx-loading-bar/core'
+import { getShortLocale } from '@peertube/peertube-core-utils'
+import { BroadcastMessageLevel, HTMLServerConfig, UserRole } from '@peertube/peertube-models'
 import { logger } from '@root-helpers/logger'
 import { peertubeLocalStorage } from '@root-helpers/peertube-web-storage'
-import { getShortLocale } from '@shared/core-utils/i18n'
-import { BroadcastMessageLevel, HTMLServerConfig, UserRole } from '@shared/models'
 import { MenuService } from './core/menu/menu.service'
 import { POP_STATE_MODAL_DISMISS } from './helpers'
 import { GlobalIconName } from './shared/shared-icons'
@@ -49,6 +50,7 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   customCSS: SafeHtml
   broadcastMessage: { message: string, dismissable: boolean, class: string } | null = null
+  hotkeysModalOpened = false
 
   private serverConfig: HTMLServerConfig
 
@@ -160,16 +162,32 @@ export class AppComponent implements OnInit, AfterViewInit {
     this.screenService.isBroadcastMessageDisplayed = false
   }
 
+  // ---------------------------------------------------------------------------
+
   getNotificationIcon (message: { severity: 'success' | 'error' | 'info' }): GlobalIconName {
     switch (message.severity) {
       case 'error':
         return 'cross'
+
       case 'success':
         return 'tick'
+
       case 'info':
         return 'help'
     }
   }
+
+  getNotificationRole (message: { severity: 'success' | 'error' | 'info' }) {
+    switch (message.severity) {
+      case 'error':
+        return 'alert'
+
+      default:
+        return 'status'
+    }
+  }
+
+  // ---------------------------------------------------------------------------
 
   private initRouteEvents () {
     const eventsObs = this.router.events
@@ -213,8 +231,13 @@ export class AppComponent implements OnInit, AfterViewInit {
         error: 'alert-danger'
       }
 
+      const root = document.createElement('div')
+      root.innerHTML = await this.markdownService.markdownToUnsafeHTML({ markdown: messageConfig.message })
+      // Use alert-link class on links since there will be in an alert block
+      root.querySelectorAll('a').forEach(a => a.className += ' alert-link')
+
       this.broadcastMessage = {
-        message: await this.markdownService.markdownToUnsafeHTML({ markdown: messageConfig.message }),
+        message: root.innerHTML,
         dismissable: messageConfig.dismissable,
         class: classes[messageConfig.level]
       }
@@ -287,44 +310,52 @@ export class AppComponent implements OnInit, AfterViewInit {
     }
   }
 
+  // ---------------------------------------------------------------------------
+
   private initHotkeys () {
     this.hotkeysService.add([
-      new Hotkey([ '/', 's' ], (event: KeyboardEvent): boolean => {
+      new Hotkey([ 'Shift+/', 's' ], () => {
         document.getElementById('search-video').focus()
         return false
-      }, undefined, $localize`Focus the search bar`),
+      }, $localize`Focus the search bar`),
 
-      new Hotkey('b', (event: KeyboardEvent): boolean => {
+      new Hotkey('b', () => {
         this.menu.toggleMenu()
         return false
-      }, undefined, $localize`Toggle the left menu`),
+      }, $localize`Toggle the left menu`),
 
-      new Hotkey('g o', (event: KeyboardEvent): boolean => {
+      new Hotkey('g o', () => {
         this.router.navigate([ '/videos/overview' ])
         return false
-      }, undefined, $localize`Go to the discover videos page`),
+      }, $localize`Go to the discover videos page`),
 
-      new Hotkey('g t', (event: KeyboardEvent): boolean => {
+      new Hotkey('g t', () => {
         this.router.navigate([ '/videos/trending' ])
         return false
-      }, undefined, $localize`Go to the trending videos page`),
+      }, $localize`Go to the trending videos page`),
 
-      new Hotkey('g r', (event: KeyboardEvent): boolean => {
+      new Hotkey('g r', () => {
         this.router.navigate([ '/videos/recently-added' ])
         return false
-      }, undefined, $localize`Go to the recently added videos page`),
+      }, $localize`Go to the recently added videos page`),
 
-      new Hotkey('g l', (event: KeyboardEvent): boolean => {
+      new Hotkey('g l', () => {
         this.router.navigate([ '/videos/local' ])
         return false
-      }, undefined, $localize`Go to the local videos page`),
+      }, $localize`Go to the local videos page`),
 
-      new Hotkey('g u', (event: KeyboardEvent): boolean => {
+      new Hotkey('g u', () => {
         this.router.navigate([ '/videos/upload' ])
         return false
-      }, undefined, $localize`Go to the videos upload page`)
+      }, $localize`Go to the videos upload page`)
     ])
   }
+
+  onHotkeysModalStateChange (opened: boolean) {
+    this.hotkeysModalOpened = opened
+  }
+
+  // ---------------------------------------------------------------------------
 
   private loadUser () {
     const tokens = this.userLocalStorage.getTokens()

@@ -1,4 +1,4 @@
-import { go } from '../utils'
+import { browserSleep, go, isAndroid } from '../utils'
 
 export class LoginPage {
 
@@ -23,12 +23,20 @@ export class LoginPage {
     await $('input#username').setValue(username)
     await $('input#password').setValue(password)
 
-    await browser.pause(1000)
+    await browserSleep(1000)
 
-    await $('form input[type=submit]').click()
+    const submit = $('.login-form-and-externals > form input[type=submit]')
+    await submit.click()
+
+    // Have to do this on Android, don't really know why
+    // I think we need to "escape" from the password input, so click twice on the submit button
+    if (isAndroid()) {
+      await browserSleep(2000)
+      await submit.click()
+    }
 
     if (this.isMobileDevice) {
-      const menuToggle = $('.top-left-block span[role=button]')
+      const menuToggle = $('.top-left-block button')
 
       await $('h2=Our content selection').waitForDisplayed()
 
@@ -79,7 +87,7 @@ export class LoginPage {
     await logout.click()
 
     await browser.waitUntil(() => {
-      return $('.login-buttons-block, my-error-page a[href="/login"]').isDisplayed()
+      return $$('.login-buttons-block, my-error-page a[href="/login"]').some(e => e.isDisplayed())
     })
   }
 

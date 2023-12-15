@@ -1,16 +1,18 @@
 import { SortMeta } from 'primeng/api'
-import { from, Observable, of } from 'rxjs'
+import { from, Observable, of, throwError } from 'rxjs'
 import { catchError, concatMap, map, switchMap, toArray } from 'rxjs/operators'
 import { HttpClient, HttpParams, HttpRequest } from '@angular/common/http'
 import { Injectable } from '@angular/core'
-import { AuthService, ComponentPaginationLight, RestExtractor, RestService, ServerService, UserService } from '@app/core'
+import { AuthService, ComponentPaginationLight, ConfirmService, RestExtractor, RestService, ServerService, UserService } from '@app/core'
 import { objectToFormData } from '@app/helpers'
-import { arrayify } from '@shared/core-utils'
+import { arrayify } from '@peertube/peertube-core-utils'
 import {
   BooleanBothQuery,
   FeedFormat,
   NSFWPolicyType,
   ResultList,
+  ServerErrorCode,
+  Storyboard,
   UserVideoRate,
   UserVideoRateType,
   UserVideoRateUpdate,
@@ -19,34 +21,33 @@ import {
   VideoConstant,
   VideoDetails as VideoDetailsServerModel,
   VideoFileMetadata,
-  VideoInclude,
+  VideoIncludeType,
   VideoPrivacy,
+  VideoPrivacyType,
   VideoSortField,
+  VideoSource,
   VideoTranscodingCreate,
   VideoUpdate
-} from '@shared/models'
-import { VideoSource } from '@shared/models/videos/video-source'
+} from '@peertube/peertube-models'
 import { environment } from '../../../../environments/environment'
 import { Account } from '../account/account.model'
 import { AccountService } from '../account/account.service'
 import { VideoChannel, VideoChannelService } from '../video-channel'
 import { VideoDetails } from './video-details.model'
 import { VideoEdit } from './video-edit.model'
+import { VideoPasswordService } from './video-password.service'
 import { Video } from './video.model'
 
 export type CommonVideoParams = {
   videoPagination?: ComponentPaginationLight
   sort: VideoSortField | SortMeta
-  include?: VideoInclude
+  include?: VideoIncludeType
   isLocal?: boolean
   categoryOneOf?: number[]
   languageOneOf?: string[]
-  privacyOneOf?: VideoPrivacy[]
+  privacyOneOf?: VideoPrivacyType[]
   isLive?: boolean
   skipCount?: boolean
-
-  // FIXME: remove?
-  nsfwPolicy?: NSFWPolicyType
   nsfw?: BooleanBothQuery
 }
 
@@ -62,23 +63,25 @@ export class VideoService {
     private authHttp: HttpClient,
     private restExtractor: RestExtractor,
     private restService: RestService,
-    private serverService: ServerService
+    private serverService: ServerService,
+    private confirmService: ConfirmService
   ) {}
 
   getVideoViewUrl (uuid: string) {
     return `${VideoService.BASE_VIDEO_URL}/${uuid}/views`
   }
 
-  getVideo (options: { videoId: string }): Observable<VideoDetails> {
-    return this.serverService.getServerLocale()
-               .pipe(
-                 switchMap(translations => {
-                   return this.authHttp.get<VideoDetailsServerModel>(`${VideoService.BASE_VIDEO_URL}/${options.videoId}`)
-                              .pipe(map(videoHash => ({ videoHash, translations })))
-                 }),
-                 map(({ videoHash, translations }) => new VideoDetails(videoHash, translations)),
-                 catchError(err => this.restExtractor.handleError(err))
-               )
+  getVideo (options: { videoId: string, videoPassword?: string }): Observable<VideoDetails> {
+    const headers = VideoPasswordService.buildVideoPasswordHeader(options.videoPassword)
+
+    return this.serverService.getServerLocale().pipe(
+      switchMap(translations => {
+        return this.authHttp.get<VideoDetailsServerModel>(`${VideoService.BASE_VIDEO_URL}/${options.videoId}`, { headers })
+          .pipe(map(videoHash => ({ videoHash, translations })))
+      }),
+      map(({ videoHash, translations }) => new VideoDetails(videoHash, translations)),
+      catchError(err => this.restExtractor.handleError(err))
+    )
   }
 
   updateVideo (video: VideoEdit) {
@@ -99,6 +102,9 @@ export class VideoService {
       description,
       channelId: video.channelId,
       privacy: video.privacy,
+      videoPasswords: video.privacy === VideoPrivacy.PASSWORD_PROTECTED
+        ? [ video.videoPassword ]
+        : undefined,
       tags: video.tags,
       nsfw: video.nsfw,
       waitTranscoding: video.waitTranscoding,
@@ -305,7 +311,7 @@ export class VideoService {
       )
   }
 
-  removeVideoFiles (videoIds: (number | string)[], type: 'hls' | 'webtorrent') {
+  removeVideoFiles (videoIds: (number | string)[], type: 'hls' | 'web-videos') {
     return from(videoIds)
       .pipe(
         concatMap(id => this.authHttp.delete(VideoService.BASE_VIDEO_URL + '/' + id + '/' + type)),
@@ -314,21 +320,57 @@ export class VideoService {
       )
   }
 
-  removeFile (videoId: number | string, fileId: number, type: 'hls' | 'webtorrent') {
+  removeFile (videoId: number | string, fileId: number, type: 'hls' | 'web-videos') {
     return this.authHttp.delete(VideoService.BASE_VIDEO_URL + '/' + videoId + '/' + type + '/' + fileId)
       .pipe(catchError(err => this.restExtractor.handleError(err)))
   }
 
-  runTranscoding (videoIds: (number | string)[], type: 'hls' | 'webtorrent') {
-    const body: VideoTranscodingCreate = { transcodingType: type }
+  runTranscoding (options: {
+    videoIds: (number | string)[]
+    type: 'hls' | 'web-video'
+    askForForceTranscodingIfNeeded: boolean
+    forceTranscoding?: boolean
+  }): Observable<any> {
+    const { videoIds, type, askForForceTranscodingIfNeeded, forceTranscoding } = options
+
+    if (askForForceTranscodingIfNeeded && videoIds.length !== 1) {
+      throw new Error('Cannot ask to force transcoding on multiple videos')
+    }
+
+    const body: VideoTranscodingCreate = { transcodingType: type, forceTranscoding }
 
     return from(videoIds)
       .pipe(
-        concatMap(id => this.authHttp.post(VideoService.BASE_VIDEO_URL + '/' + id + '/transcoding', body)),
+        concatMap(id => {
+          return this.authHttp.post(VideoService.BASE_VIDEO_URL + '/' + id + '/transcoding', body)
+            .pipe(
+              catchError(err => {
+                if (askForForceTranscodingIfNeeded && err.error?.code === ServerErrorCode.VIDEO_ALREADY_BEING_TRANSCODED) {
+                  const message = $localize`PeerTube considers this video is already being transcoded.` +
+                    // eslint-disable-next-line max-len
+                    $localize` If you think PeerTube is wrong (video in broken state after a crash etc.), you can force transcoding on this video.` +
+                    ` Do you still want to run transcoding?`
+
+                  return from(this.confirmService.confirm(message, $localize`Force transcoding`))
+                    .pipe(
+                      switchMap(res => {
+                        if (res === false) return throwError(() => err)
+
+                        return this.runTranscoding({ videoIds, type, askForForceTranscodingIfNeeded: false, forceTranscoding: true })
+                      })
+                    )
+                }
+
+                return throwError(() => err)
+              })
+            )
+        }),
         toArray(),
         catchError(err => this.restExtractor.handleError(err))
       )
   }
+
+  // ---------------------------------------------------------------------------
 
   loadCompleteDescription (descriptionPath: string) {
     return this.authHttp
@@ -339,6 +381,27 @@ export class VideoService {
                )
   }
 
+  // ---------------------------------------------------------------------------
+
+  getStoryboards (videoId: string | number, videoPassword: string) {
+    const headers = VideoPasswordService.buildVideoPasswordHeader(videoPassword)
+
+    return this.authHttp
+      .get<{ storyboards: Storyboard[] }>(VideoService.BASE_VIDEO_URL + '/' + videoId + '/storyboards', { headers })
+      .pipe(
+        map(({ storyboards }) => storyboards),
+        catchError(err => {
+          if (err.status === 404) {
+            return of([])
+          }
+
+          return this.restExtractor.handleError(err)
+        })
+      )
+  }
+
+  // ---------------------------------------------------------------------------
+
   getSource (videoId: number) {
     return this.authHttp
                .get<{ source: VideoSource }>(VideoService.BASE_VIDEO_URL + '/' + videoId + '/source')
@@ -348,22 +411,26 @@ export class VideoService {
                      return of(undefined)
                    }
 
-                   this.restExtractor.handleError(err)
+                   return this.restExtractor.handleError(err)
                  })
                )
   }
 
-  setVideoLike (id: string) {
-    return this.setVideoRate(id, 'like')
+  // ---------------------------------------------------------------------------
+
+  setVideoLike (id: string, videoPassword: string) {
+    return this.setVideoRate(id, 'like', videoPassword)
   }
 
-  setVideoDislike (id: string) {
-    return this.setVideoRate(id, 'dislike')
+  setVideoDislike (id: string, videoPassword: string) {
+    return this.setVideoRate(id, 'dislike', videoPassword)
   }
 
-  unsetVideoLike (id: string) {
-    return this.setVideoRate(id, 'none')
+  unsetVideoLike (id: string, videoPassword: string) {
+    return this.setVideoRate(id, 'none', videoPassword)
   }
+
+  // ---------------------------------------------------------------------------
 
   getUserVideoRating (id: string) {
     const url = UserService.BASE_USERS_URL + 'me/videos/' + id + '/rating'
@@ -389,12 +456,13 @@ export class VideoService {
                )
   }
 
-  explainedPrivacyLabels (serverPrivacies: VideoConstant<VideoPrivacy>[], defaultPrivacyId = VideoPrivacy.PUBLIC) {
+  explainedPrivacyLabels (serverPrivacies: VideoConstant<VideoPrivacyType>[], defaultPrivacyId: VideoPrivacyType = VideoPrivacy.PUBLIC) {
     const descriptions = {
       [VideoPrivacy.PRIVATE]: $localize`Only I can see this video`,
       [VideoPrivacy.UNLISTED]: $localize`Only shareable via a private link`,
       [VideoPrivacy.PUBLIC]: $localize`Anyone can see this video`,
-      [VideoPrivacy.INTERNAL]: $localize`Only users of this instance can see this video`
+      [VideoPrivacy.INTERNAL]: $localize`Only users of this instance can see this video`,
+      [VideoPrivacy.PASSWORD_PROTECTED]: $localize`Only users with the appropriate password can see this video`
     }
 
     const videoPrivacies = serverPrivacies.map(p => {
@@ -411,8 +479,14 @@ export class VideoService {
     }
   }
 
-  getHighestAvailablePrivacy (serverPrivacies: VideoConstant<VideoPrivacy>[]) {
-    const order = [ VideoPrivacy.PRIVATE, VideoPrivacy.INTERNAL, VideoPrivacy.UNLISTED, VideoPrivacy.PUBLIC ]
+  getHighestAvailablePrivacy (serverPrivacies: VideoConstant<VideoPrivacyType>[]) {
+    // We do not add a password as this requires additional configuration.
+    const order = [
+      VideoPrivacy.PRIVATE,
+      VideoPrivacy.INTERNAL,
+      VideoPrivacy.UNLISTED,
+      VideoPrivacy.PUBLIC
+    ]
 
     for (const privacy of order) {
       if (serverPrivacies.find(p => p.id === privacy)) {
@@ -423,7 +497,7 @@ export class VideoService {
     throw new Error('No highest privacy available')
   }
 
-  nsfwPolicyToParam (nsfwPolicy: NSFWPolicyType) {
+  nsfwPolicyToParam (nsfwPolicy: NSFWPolicyType): BooleanBothQuery {
     return nsfwPolicy === 'do_not_list'
       ? 'false'
       : 'both'
@@ -458,7 +532,6 @@ export class VideoService {
       languageOneOf,
       privacyOneOf,
       skipCount,
-      nsfwPolicy,
       isLive,
       nsfw
     } = options
@@ -475,7 +548,6 @@ export class VideoService {
     if (include !== undefined) newParams = newParams.set('include', include)
     if (isLive !== undefined) newParams = newParams.set('isLive', isLive)
     if (nsfw !== undefined) newParams = newParams.set('nsfw', nsfw)
-    if (nsfwPolicy !== undefined) newParams = newParams.set('nsfw', this.nsfwPolicyToParam(nsfwPolicy))
     if (languageOneOf !== undefined) newParams = this.restService.addArrayParams(newParams, 'languageOneOf', languageOneOf)
     if (categoryOneOf !== undefined) newParams = this.restService.addArrayParams(newParams, 'categoryOneOf', categoryOneOf)
     if (privacyOneOf !== undefined) newParams = this.restService.addArrayParams(newParams, 'privacyOneOf', privacyOneOf)
@@ -499,14 +571,15 @@ export class VideoService {
     }
   }
 
-  private setVideoRate (id: string, rateType: UserVideoRateType) {
+  private setVideoRate (id: string, rateType: UserVideoRateType, videoPassword?: string) {
     const url = `${VideoService.BASE_VIDEO_URL}/${id}/rate`
     const body: UserVideoRateUpdate = {
       rating: rateType
     }
+    const headers = VideoPasswordService.buildVideoPasswordHeader(videoPassword)
 
     return this.authHttp
-               .put(url, body)
+               .put(url, body, { headers })
                .pipe(catchError(err => this.restExtractor.handleError(err)))
   }
 }

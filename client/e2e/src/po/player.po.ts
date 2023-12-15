@@ -29,29 +29,34 @@ export class PlayerPage {
   }
 
   async playAndPauseVideo (isAutoplay: boolean, waitUntilSec: number) {
-    const videojsElem = () => $('div.video-js')
-
-    await videojsElem().waitForExist()
-
-    // Autoplay is disabled on iOS and Safari
-    if (isIOS() || isSafari() || isMobileDevice()) {
-      // We can't play the video if it is not muted
-      await browser.execute(`document.querySelector('video').muted = true`)
-      await this.clickOnPlayButton()
-    } else if (isAutoplay === false) {
-      await this.clickOnPlayButton()
+    // Autoplay is disabled on mobile and Safari
+    if (isIOS() || isSafari() || isMobileDevice() || isAutoplay === false) {
+      await this.playVideo()
     }
+
+    await $('div.video-js.vjs-has-started').waitForExist()
 
     await browserSleep(2000)
 
     await browser.waitUntil(async () => {
       return (await this.getWatchVideoPlayerCurrentTime()) >= waitUntilSec
-    })
+    }, { timeout: Math.max(waitUntilSec * 2 * 1000, 30000) })
 
-    await videojsElem().click()
+    // Pause video
+    await $('div.video-js').click()
   }
 
   async playVideo () {
+    await $('div.video-js.vjs-paused, div.video-js.vjs-playing').waitForExist()
+
+    if (await $('div.video-js.vjs-playing').isExisting()) return
+
+    // Autoplay is disabled on iOS and Safari
+    if (isIOS() || isSafari() || isMobileDevice()) {
+      // We can't play the video if it is not muted
+      await browser.execute(`document.querySelector('video').muted = true`)
+    }
+
     return this.clickOnPlayButton()
   }
 
@@ -60,5 +65,16 @@ export class PlayerPage {
 
     await playButton().waitForClickable()
     await playButton().click()
+  }
+
+  async fillEmbedVideoPassword (videoPassword: string) {
+    const videoPasswordInput = $('input#video-password-input')
+    const confirmButton = await $('button#video-password-submit')
+
+    await videoPasswordInput.clearValue()
+    await videoPasswordInput.setValue(videoPassword)
+    await confirmButton.waitForClickable()
+
+    return confirmButton.click()
   }
 }

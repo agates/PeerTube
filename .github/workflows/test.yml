@@ -46,6 +46,7 @@ jobs:
       PGHOST: localhost
       NODE_PENDING_JOB_WAIT: 250
       ENABLE_OBJECT_STORAGE_TESTS: true
+      ENABLE_FFMPEG_THUMBNAIL_PIXEL_COMPARISON_TESTS: true
       OBJECT_STORAGE_SCALEWAY_KEY_ID: ${{ secrets.OBJECT_STORAGE_SCALEWAY_KEY_ID }}
       OBJECT_STORAGE_SCALEWAY_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SCALEWAY_ACCESS_KEY }}
       YOUTUBE_DL_DOWNLOAD_BEARER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,7 +56,7 @@ jobs:
 
       - uses: './.github/actions/reusable-prepare-peertube-build'
         with:
-          node-version: '16.x'
+          node-version: '18.x'
 
       - uses: './.github/actions/reusable-prepare-peertube-run'
 

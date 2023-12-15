@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild } from '@angular/core'
 import { Video } from '@app/shared/shared-main'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { LiveVideo, LiveVideoError, LiveVideoSession } from '@shared/models'
+import { LiveVideo, LiveVideoError, LiveVideoErrorType, LiveVideoSession } from '@peertube/peertube-models'
 import { LiveVideoService } from './live-video.service'
 
 @Component({
@@ -38,14 +38,16 @@ export class LiveStreamInformationComponent {
   getErrorLabel (session: LiveVideoSession) {
     if (!session.error) return undefined
 
-    const errors: { [ id in LiveVideoError ]: string } = {
+    const errors: { [ id in LiveVideoErrorType ]: string } = {
       [LiveVideoError.BAD_SOCKET_HEALTH]: $localize`Server too slow`,
       [LiveVideoError.BLACKLISTED]: $localize`Live blacklisted`,
       [LiveVideoError.DURATION_EXCEEDED]: $localize`Max duration exceeded`,
       [LiveVideoError.FFMPEG_ERROR]: $localize`Server error`,
       [LiveVideoError.QUOTA_EXCEEDED]: $localize`Quota exceeded`,
       [LiveVideoError.RUNNER_JOB_CANCEL]: $localize`Runner job cancelled`,
-      [LiveVideoError.RUNNER_JOB_ERROR]: $localize`Error in runner job`
+      [LiveVideoError.RUNNER_JOB_ERROR]: $localize`Error in runner job`,
+      [LiveVideoError.UNKNOWN_ERROR]: $localize`Unknown error`,
+      [LiveVideoError.INVALID_INPUT_VIDEO_STREAM]: $localize`Invalid input video stream`
     }
 
     return errors[session.error]

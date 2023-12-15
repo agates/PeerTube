@@ -1,9 +1,8 @@
 import { AuthUser } from '@app/core'
 import { User } from '@app/core/users/user.model'
-import { durationToString, getAbsoluteAPIUrl, getAbsoluteEmbedUrl, prepareIcu } from '@app/helpers'
+import { durationToString, formatICU, getAbsoluteAPIUrl, getAbsoluteEmbedUrl } from '@app/helpers'
 import { Actor } from '@app/shared/shared-main/account/actor.model'
-import { buildVideoWatchPath, getAllFiles } from '@shared/core-utils'
-import { peertubeTranslate } from '@shared/core-utils/i18n'
+import { buildVideoWatchPath, getAllFiles, peertubeTranslate } from '@peertube/peertube-core-utils'
 import {
   ActorImage,
   HTMLServerConfig,
@@ -12,16 +11,15 @@ import {
   VideoConstant,
   VideoFile,
   VideoPrivacy,
+  VideoPrivacyType,
   VideoScheduleUpdate,
   VideoState,
+  VideoStateType,
   VideoStreamingPlaylist,
   VideoStreamingPlaylistType
-} from '@shared/models'
+} from '@peertube/peertube-models'
 
 export class Video implements VideoServerModel {
-  private static readonly viewsICU = prepareIcu($localize`{views, plural, =0 {No view} =1 {1 view} other {{views} views}}`)
-  private static readonly viewersICU = prepareIcu($localize`{viewers, plural, =0 {No viewers} =1 {1 viewer} other {{viewers} viewers}}`)
-
   byVideoChannel: string
   byAccount: string
 
@@ -29,10 +27,11 @@ export class Video implements VideoServerModel {
   updatedAt: Date
   publishedAt: Date
   originallyPublishedAt: Date | string
+
   category: VideoConstant<number>
   licence: VideoConstant<number>
   language: VideoConstant<string>
-  privacy: VideoConstant<VideoPrivacy>
+  privacy: VideoConstant<VideoPrivacyType>
 
   truncatedDescription: string
   description: string
@@ -72,7 +71,7 @@ export class Video implements VideoServerModel {
   originInstanceHost: string
 
   waitTranscoding?: boolean
-  state?: VideoConstant<VideoState>
+  state?: VideoConstant<VideoStateType>
   scheduledUpdate?: VideoScheduleUpdate
 
   blacklisted?: boolean
@@ -88,9 +87,6 @@ export class Video implements VideoServerModel {
     url: string
     host: string
 
-    // TODO: remove, deprecated in 4.2
-    avatar: ActorImage
-
     avatars: ActorImage[]
   }
 
@@ -100,9 +96,6 @@ export class Video implements VideoServerModel {
     displayName: string
     url: string
     host: string
-
-    // TODO: remove, deprecated in 4.2
-    avatar: ActorImage
 
     avatars: ActorImage[]
   }
@@ -255,20 +248,23 @@ export class Video implements VideoServerModel {
       user && user.hasRight(UserRight.MANAGE_VIDEO_FILES) &&
       this.state.id !== VideoState.TO_TRANSCODE &&
       this.hasHLS() &&
-      this.hasWebTorrent()
+      this.hasWebVideos()
   }
 
   canRunTranscoding (user: AuthUser) {
+    return this.canRunForcedTranscoding(user) && this.state.id !== VideoState.TO_TRANSCODE
+  }
+
+  canRunForcedTranscoding (user: AuthUser) {
     return this.isLocal &&
-      user && user.hasRight(UserRight.RUN_VIDEO_TRANSCODING) &&
-      this.state.id !== VideoState.TO_TRANSCODE
+      user && user.hasRight(UserRight.RUN_VIDEO_TRANSCODING)
   }
 
   hasHLS () {
     return this.streamingPlaylists?.some(p => p.type === VideoStreamingPlaylistType.HLS)
   }
 
-  hasWebTorrent () {
+  hasWebVideos () {
     return this.files && this.files.length !== 0
   }
 
@@ -281,11 +277,18 @@ export class Video implements VideoServerModel {
     return user && this.isLocal === false && user.hasRight(UserRight.MANAGE_VIDEOS_REDUNDANCIES)
   }
 
+  canAccessPasswordProtectedVideoWithoutPassword (user: AuthUser) {
+    return this.privacy.id === VideoPrivacy.PASSWORD_PROTECTED &&
+      user &&
+      this.isLocal === true &&
+      (this.account.name === user.username || user.hasRight(UserRight.SEE_ALL_VIDEOS))
+  }
+
   getExactNumberOfViews () {
     if (this.isLive) {
-      return Video.viewersICU({ viewers: this.viewers }, $localize`${this.viewers} viewer(s)`)
+      return formatICU($localize`{viewers, plural, =0 {No viewers} =1 {1 viewer} other {{viewers} viewers}}`, { viewers: this.viewers })
     }
 
-    return Video.viewsICU({ views: this.views }, $localize`{${this.views} view(s)}`)
+    return formatICU($localize`{views, plural, =0 {No view} =1 {1 view} other {{views} views}}`, { views: this.views })
   }
 }

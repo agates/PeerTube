@@ -1,9 +1,12 @@
 import { HlsConfig, Level } from 'hls.js'
 import videojs from 'video.js'
 import { Engine } from '@peertube/p2p-media-loader-hlsjs'
-import { VideoFile, VideoPlaylist, VideoPlaylistElement } from '@shared/models'
-import { PeerTubeDockPluginOptions } from '../shared/dock/peertube-dock-plugin'
-import { HotkeysOptions } from '../shared/hotkeys/peertube-hotkeys-plugin'
+import { VideoChapter, VideoFile, VideoPlaylist, VideoPlaylistElement } from '@peertube/peertube-models'
+import { BezelsPlugin } from '../shared/bezels/bezels-plugin'
+import { StoryboardPlugin } from '../shared/control-bar/storyboard-plugin'
+import { PeerTubeDockPlugin, PeerTubeDockPluginOptions } from '../shared/dock/peertube-dock-plugin'
+import { HotkeysOptions, PeerTubeHotkeysPlugin } from '../shared/hotkeys/peertube-hotkeys-plugin'
+import { PeerTubeMobilePlugin } from '../shared/mobile/peertube-mobile-plugin'
 import { Html5Hlsjs } from '../shared/p2p-media-loader/hls-plugin'
 import { P2pMediaLoaderPlugin } from '../shared/p2p-media-loader/p2p-media-loader-plugin'
 import { RedundancyUrlManager } from '../shared/p2p-media-loader/redundancy-url-manager'
@@ -12,9 +15,11 @@ import { PlaylistPlugin } from '../shared/playlist/playlist-plugin'
 import { PeerTubeResolutionsPlugin } from '../shared/resolutions/peertube-resolutions-plugin'
 import { StatsCardOptions } from '../shared/stats/stats-card'
 import { StatsForNerdsPlugin } from '../shared/stats/stats-plugin'
-import { EndCardOptions } from '../shared/upnext/end-card'
-import { WebTorrentPlugin } from '../shared/webtorrent/webtorrent-plugin'
-import { PlayerMode } from './manager-options'
+import { UpNextPlugin } from '../shared/upnext/upnext-plugin'
+import { WebVideoPlugin } from '../shared/web-video/web-video-plugin'
+import { PlayerMode } from './peertube-player-options'
+import { SegmentValidator } from '../shared/p2p-media-loader/segment-validator'
+import { ChaptersPlugin } from '../shared/control-bar/chapters-plugin'
 
 declare module 'video.js' {
 
@@ -31,33 +36,38 @@ declare module 'video.js' {
 
     handleTechSeeked_ (): void
 
-    // Plugins
-
-    peertube (): PeerTubePlugin
-
-    webtorrent (): WebTorrentPlugin
-
-    p2pMediaLoader (): P2pMediaLoaderPlugin
-
-    peertubeResolutions (): PeerTubeResolutionsPlugin
-
-    contextmenuUI (options: any): any
-
-    bezels (): void
-    peertubeMobile (): void
-    peerTubeHotkeysPlugin (options?: HotkeysOptions): void
-
-    stats (options?: StatsCardOptions): StatsForNerdsPlugin
-
     textTracks (): TextTrackList & {
       tracks_: (TextTrack & { id: string, label: string, src: string })[]
     }
 
-    peertubeDock (options: PeerTubeDockPluginOptions): void
+    // Plugins
 
-    upnext (options: Partial<EndCardOptions>): void
+    peertube (): PeerTubePlugin
 
-    playlist (): PlaylistPlugin
+    webVideo (options?: any): WebVideoPlugin
+
+    p2pMediaLoader (options?: any): P2pMediaLoaderPlugin
+    hlsjs (options?: any): any
+
+    peertubeResolutions (): PeerTubeResolutionsPlugin
+
+    contextmenuUI (options?: any): any
+
+    bezels (): BezelsPlugin
+    peertubeMobile (): PeerTubeMobilePlugin
+    peerTubeHotkeysPlugin (options?: HotkeysOptions): PeerTubeHotkeysPlugin
+
+    stats (options?: StatsCardOptions): StatsForNerdsPlugin
+
+    storyboard (options?: StoryboardOptions): StoryboardPlugin
+
+    peertubeDock (options?: PeerTubeDockPluginOptions): PeerTubeDockPlugin
+
+    chapters (options?: ChaptersOptions): ChaptersPlugin
+
+    upnext (options?: UpNextPluginOptions): UpNextPlugin
+
+    playlist (options?: PlaylistPluginOptions): PlaylistPlugin
   }
 }
 
@@ -89,33 +99,54 @@ type VideoJSCaption = {
   src: string
 }
 
+type VideoJSStoryboard = {
+  url: string
+  width: number
+  height: number
+  interval: number
+}
+
 type PeerTubePluginOptions = {
-  mode: PlayerMode
+  autoPlayerRatio: {
+    cssRatioVariable: string
+    cssPlayerPortraitModeVariable: string
+  }
 
-  autoplay: videojs.Autoplay
-  videoDuration: number
+  hasAutoplay: () => videojs.Autoplay
 
-  videoViewUrl: string
+  videoViewUrl: () => string
+  videoViewIntervalMs: number
+
   authorizationHeader?: () => string
 
-  subtitle?: string
+  videoDuration: () => number
 
-  videoCaptions: VideoJSCaption[]
+  startTime: () => number | string
+  stopTime: () => number | string
 
-  startTime: number | string
-  stopTime: number | string
+  videoCaptions: () => VideoJSCaption[]
+  isLive: () => boolean
+  videoUUID: () => string
+  subtitle: () => string
 
-  isLive: boolean
-
-  videoUUID: string
-
-  videoViewIntervalMs: number
+  poster: () => string
 }
 
 type MetricsPluginOptions = {
-  mode: PlayerMode
-  metricsUrl: string
-  videoUUID: string
+  mode: () => PlayerMode
+  metricsUrl: () => string
+  videoUUID: () => string
+}
+
+type StoryboardOptions = {
+  url: string
+  width: number
+  height: number
+  interval: number
+}
+
+type ChaptersOptions = {
+  chapters: VideoChapter[]
 }
 
 type PlaylistPluginOptions = {
@@ -128,37 +159,39 @@ type PlaylistPluginOptions = {
   onItemClicked: (element: VideoPlaylistElement) => void
 }
 
+type UpNextPluginOptions = {
+  timeout: number
+
+  next: () => void
+  getTitle: () => string
+  isDisplayed: () => boolean
+  isSuspended: () => boolean
+}
+
+type ProgressBarMarkerComponentOptions = {
+  timecode: number
+}
+
 type NextPreviousVideoButtonOptions = {
   type: 'next' | 'previous'
-  handler: () => void
+  handler?: () => void
+  isDisplayed: () => boolean
   isDisabled: () => boolean
 }
 
 type PeerTubeLinkButtonOptions = {
-  shortUUID: string
+  isDisplayed: () => boolean
+  shortUUID: () => string
   instanceName: string
 }
 
-type PeerTubeP2PInfoButtonOptions = {
-  p2pEnabled: boolean
+type TheaterButtonOptions = {
+  isDisplayed: () => boolean
 }
 
-type WebtorrentPluginOptions = {
-  playerElement: HTMLVideoElement
-
-  autoplay: videojs.Autoplay
-  videoDuration: number
-
+type WebVideoPluginOptions = {
   videoFiles: VideoFile[]
-
-  startTime: number | string
-
-  playerRefusedP2P: boolean
-
-  requiresAuth: boolean
   videoFileToken: () => string
-
-  buildWebSeedUrls: (file: VideoFile) => string[]
 }
 
 type P2PMediaLoaderPluginOptions = {
@@ -166,16 +199,19 @@ type P2PMediaLoaderPluginOptions = {
   type: string
   src: string
 
-  startTime: number | string
+  p2pEnabled: boolean
 
   loader: P2PMediaLoader
+  segmentValidator: SegmentValidator
 
-  requiresAuth: boolean
+  requiresUserAuth: boolean
   videoFileToken: () => string
 }
 
 export type P2PMediaLoader = {
   getEngine(): Engine
+
+  destroy: () => void
 }
 
 type VideoJSPluginOptions = {
@@ -184,7 +220,7 @@ type VideoJSPluginOptions = {
   peertube: PeerTubePluginOptions
   metrics: MetricsPluginOptions
 
-  webtorrent?: WebtorrentPluginOptions
+  webVideo?: WebVideoPluginOptions
 
   p2pMediaLoader?: P2PMediaLoaderPluginOptions
 }
@@ -211,23 +247,26 @@ type AutoResolutionUpdateData = {
 }
 
 type PlayerNetworkInfo = {
-  source: 'webtorrent' | 'p2p-media-loader'
+  source: 'web-video' | 'p2p-media-loader'
 
   http: {
-    downloadSpeed: number
+    downloadSpeed?: number
     downloaded: number
   }
 
-  p2p: {
+  p2p?: {
     downloadSpeed: number
     uploadSpeed: number
+
     downloaded: number
     uploaded: number
-    numPeers: number
+
+    peersWithWebSeed: number
+    peersP2POnly: number
   }
 
   // In bytes
-  bandwidthEstimate: number
+  bandwidthEstimate?: number
 }
 
 type PlaylistItemOptions = {
@@ -238,19 +277,24 @@ type PlaylistItemOptions = {
 
 export {
   PlayerNetworkInfo,
+  TheaterButtonOptions,
+  VideoJSStoryboard,
   PlaylistItemOptions,
   NextPreviousVideoButtonOptions,
   ResolutionUpdateData,
   AutoResolutionUpdateData,
+  ProgressBarMarkerComponentOptions,
   PlaylistPluginOptions,
   MetricsPluginOptions,
   VideoJSCaption,
   PeerTubePluginOptions,
-  WebtorrentPluginOptions,
+  WebVideoPluginOptions,
   P2PMediaLoaderPluginOptions,
   PeerTubeResolution,
   VideoJSPluginOptions,
+  UpNextPluginOptions,
   LoadedQualityData,
-  PeerTubeLinkButtonOptions,
-  PeerTubeP2PInfoButtonOptions
+  StoryboardOptions,
+  ChaptersOptions,
+  PeerTubeLinkButtonOptions
 }

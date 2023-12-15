@@ -24,7 +24,7 @@
             >
           </div>
 
-          <div *ngIf="formErrors['externalChannelUrl']" class="form-error">
+          <div *ngIf="formErrors['externalChannelUrl']" class="form-error" role="alert">
             {{ formErrors['externalChannelUrl'] }}
           </div>
         </div>
@@ -33,12 +33,12 @@
           <label i18n for="videoChannel">Video Channel</label>
           <my-select-channel required [items]="userVideoChannels" formControlName="videoChannel"></my-select-channel>
 
-          <div *ngIf="formErrors['videoChannel']" class="form-error">
+          <div *ngIf="formErrors['videoChannel']" class="form-error" role="alert">
             {{ formErrors['videoChannel'] }}
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" role="radiogroup">
           <label for="existingVideoStrategy" i18n>Options for existing videos on remote channel:</label>
 
           <div class="peertube-radio-container">

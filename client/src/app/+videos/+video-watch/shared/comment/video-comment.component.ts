@@ -1,11 +1,10 @@
-
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, ViewChild } from '@angular/core'
 import { MarkdownService, Notifier, UserService } from '@app/core'
 import { AuthService } from '@app/core/auth'
 import { Account, DropdownAction, Video } from '@app/shared/shared-main'
 import { CommentReportComponent } from '@app/shared/shared-moderation/report-modals/comment-report.component'
 import { VideoComment, VideoCommentThreadTree } from '@app/shared/shared-video-comment'
-import { User, UserRight } from '@shared/models'
+import { User, UserRight } from '@peertube/peertube-models'
 
 @Component({
   selector: 'my-video-comment',
@@ -16,6 +15,7 @@ export class VideoCommentComponent implements OnInit, OnChanges {
   @ViewChild('commentReportModal') commentReportModal: CommentReportComponent
 
   @Input() video: Video
+  @Input() videoPassword: string
   @Input() comment: VideoComment
   @Input() parentComments: VideoComment[] = []
   @Input() commentTree: VideoCommentThreadTree

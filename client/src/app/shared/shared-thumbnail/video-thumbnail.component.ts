@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { ScreenService } from '@app/core'
-import { VideoState } from '@shared/models'
+import { VideoState } from '@peertube/peertube-models'
 import { Video } from '../shared-main'
 
 @Component({
@@ -19,6 +19,8 @@ export class VideoThumbnailComponent {
 
   @Input() displayWatchLaterPlaylist: boolean
   @Input() inWatchLaterPlaylist: boolean
+
+  @Input({ required: true }) ariaLabel: string
 
   @Output() watchLaterClick = new EventEmitter<boolean>()
 

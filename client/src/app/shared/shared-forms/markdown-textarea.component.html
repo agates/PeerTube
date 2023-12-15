@@ -4,15 +4,15 @@
     [(ngModel)]="content" (ngModelChange)="onModelChange()"
     class="form-control" [ngClass]="{ 'input-error': formError }"
     [attr.disabled]="disabled || null"
-    [id]="name" [name]="name">
+    [id]="name" [name]="name" [dir]="dir">
   </textarea>
 
   <div ngbNav #nav="ngbNav" class="nav-pills nav-preview">
-    <ng-container ngbNavItem *ngIf="truncate !== undefined">
+    <ng-container ngbNavItem *ngIf="truncateTo3Lines">
       <a ngbNavLink i18n>Truncated preview</a>
 
       <ng-template ngbNavContent>
-        <div [innerHTML]="truncatedPreviewHTML"></div>
+        <div class="ellipsis-multiline-3" [innerHTML]="previewHTML"></div>
       </ng-template>
     </ng-container>
 
@@ -25,7 +25,7 @@
       </ng-template>
     </ng-container>
 
-    <button (click)="onMaximizeClick()" class="maximize-button border-0 m-3" [disabled]="disabled">
+    <button type="button" (click)="onMaximizeClick()" class="maximize-button border-0 m-3" [disabled]="disabled">
       <my-global-icon *ngIf="!isMaximized" [ngbTooltip]="maximizeInText" iconName="fullscreen"></my-global-icon>
 
       <my-global-icon *ngIf="isMaximized" [ngbTooltip]="maximizeOutText" iconName="exit-fullscreen"></my-global-icon>
@@ -34,5 +34,5 @@
 
   <div [ngbNavOutlet]="nav"></div>
 
-  <div *ngIf="!isMaximized && formError" class="form-error">{{ formError }}</div>
+  <div *ngIf="!isMaximized && formError" class="form-error" role="alert">{{ formError }}</div>
 </div>

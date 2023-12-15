@@ -1,4 +1,3 @@
-import truncate from 'lodash-es/truncate'
 import { Subject } from 'rxjs'
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators'
 import { ViewportScroller } from '@angular/common'
@@ -6,7 +5,8 @@ import { Component, ElementRef, forwardRef, Input, OnInit, ViewChild } from '@an
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms'
 import { SafeHtml } from '@angular/platform-browser'
 import { MarkdownService, ScreenService } from '@app/core'
-import { Video } from '@shared/models'
+import { Video } from '@peertube/peertube-models'
+import { FormReactiveErrors } from './form-reactive.service'
 
 @Component({
   selector: 'my-markdown-textarea',
@@ -24,9 +24,9 @@ import { Video } from '@shared/models'
 export class MarkdownTextareaComponent implements ControlValueAccessor, OnInit {
   @Input() content = ''
 
-  @Input() formError: string
+  @Input() formError: string | FormReactiveErrors | FormReactiveErrors[]
 
-  @Input() truncate: number
+  @Input() truncateTo3Lines: boolean
 
   @Input() markdownType: 'text' | 'enhanced' | 'to-unsafe-html' = 'text'
   @Input() customMarkdownRenderer?: (text: string) => Promise<string | HTMLElement>
@@ -37,10 +37,11 @@ export class MarkdownTextareaComponent implements ControlValueAccessor, OnInit {
 
   @Input() name = 'description'
 
+  @Input() dir: string
+
   @ViewChild('textarea') textareaElement: ElementRef
   @ViewChild('previewElement') previewElement: ElementRef
 
-  truncatedPreviewHTML: SafeHtml | string = ''
   previewHTML: SafeHtml | string = ''
 
   isMaximized = false
@@ -127,7 +128,6 @@ export class MarkdownTextareaComponent implements ControlValueAccessor, OnInit {
   private async updatePreviews () {
     if (this.content === null || this.content === undefined) return
 
-    this.truncatedPreviewHTML = await this.markdownRender(truncate(this.content, { length: this.truncate }))
     this.previewHTML = await this.markdownRender(this.content)
   }
 

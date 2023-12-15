@@ -1,14 +1,13 @@
-import { Hotkey, HotkeysService } from 'angular2-hotkeys'
 import { Subscription } from 'rxjs'
 import { catchError, distinctUntilChanged, map, switchMap } from 'rxjs/operators'
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core'
 import { ActivatedRoute } from '@angular/router'
-import { AuthService, MarkdownService, Notifier, RestExtractor, ScreenService } from '@app/core'
+import { AuthService, MarkdownService, Notifier, RestExtractor, ScreenService, Hotkey, HotkeysService } from '@app/core'
 import { Account, ListOverflowItem, VideoChannel, VideoChannelService, VideoService } from '@app/shared/shared-main'
 import { BlocklistService } from '@app/shared/shared-moderation'
 import { SupportModalComponent } from '@app/shared/shared-support-modal'
 import { SubscribeButtonComponent } from '@app/shared/shared-user-subscription'
-import { HttpStatusCode, UserRight } from '@shared/models'
+import { HttpStatusCode, UserRight } from '@peertube/peertube-models'
 
 @Component({
   templateUrl: './video-channels.component.html',
@@ -77,12 +76,12 @@ export class VideoChannelsComponent implements OnInit, OnDestroy {
                         })
 
     this.hotkeys = [
-      new Hotkey('S', (event: KeyboardEvent): boolean => {
-        if (this.subscribeButton.subscribed) this.subscribeButton.unsubscribe()
+      new Hotkey('Shift+s', () => {
+        if (this.subscribeButton.isSubscribedToAll()) this.subscribeButton.unsubscribe()
         else this.subscribeButton.subscribe()
 
         return false
-      }, undefined, $localize`Subscribe to the account`)
+      }, $localize`Subscribe to the account`)
     ]
     if (this.isUserLoggedIn()) this.hotkeysService.add(this.hotkeys)
 
@@ -118,10 +117,6 @@ export class VideoChannelsComponent implements OnInit, OnDestroy {
     if (!this.isUserLoggedIn()) return false
 
     return this.isOwner() || this.authService.getUser().hasRight(UserRight.MANAGE_ANY_VIDEO_CHANNEL)
-  }
-
-  activateCopiedMessage () {
-    this.notifier.success($localize`Username copied`)
   }
 
   hasShowMoreDescription () {

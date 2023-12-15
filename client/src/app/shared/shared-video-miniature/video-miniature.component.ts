@@ -11,7 +11,7 @@ import {
   Output
 } from '@angular/core'
 import { AuthService, ScreenService, ServerService, User } from '@app/core'
-import { HTMLServerConfig, VideoExistInPlaylist, VideoPlaylistType, VideoPrivacy, VideoState } from '@shared/models'
+import { HTMLServerConfig, VideoExistInPlaylist, VideoPlaylistType, VideoPrivacy, VideoState } from '@peertube/peertube-models'
 import { LinkType } from '../../../types/link.type'
 import { ActorAvatarSize } from '../shared-actor-image/actor-avatar.component'
 import { Video, VideoService } from '../shared-main'
@@ -171,6 +171,10 @@ export class VideoMiniatureComponent implements OnInit {
     return this.video.privacy.id === VideoPrivacy.PRIVATE
   }
 
+  isPasswordProtectedVideo () {
+    return this.video.privacy.id === VideoPrivacy.PASSWORD_PROTECTED
+  }
+
   getStateLabel (video: Video) {
     if (!video.state) return ''
 
@@ -183,31 +187,39 @@ export class VideoMiniatureComponent implements OnInit {
       return $localize`Publication scheduled on ${updateAt}`
     }
 
-    if (video.state.id === VideoState.TRANSCODING_FAILED) {
-      return $localize`Transcoding failed`
-    }
+    switch (video.state.id) {
+      case VideoState.TRANSCODING_FAILED:
+        return $localize`Transcoding failed`
 
-    if (video.state.id === VideoState.TO_MOVE_TO_EXTERNAL_STORAGE_FAILED) {
-      return $localize`Move to external storage failed`
-    }
+      case VideoState.TO_MOVE_TO_FILE_SYSTEM:
+        return $localize`Moving to file system`
 
-    if (video.state.id === VideoState.TO_TRANSCODE && video.waitTranscoding === true) {
-      return $localize`Waiting transcoding`
-    }
+      case VideoState.TO_MOVE_TO_FILE_SYSTEM_FAILED:
+        return $localize`Moving to file system failed`
 
-    if (video.state.id === VideoState.TO_TRANSCODE) {
-      return $localize`To transcode`
-    }
+      case VideoState.TO_MOVE_TO_EXTERNAL_STORAGE:
+        return $localize`Moving to external storage`
 
-    if (video.state.id === VideoState.TO_IMPORT) {
-      return $localize`To import`
-    }
+      case VideoState.TO_MOVE_TO_EXTERNAL_STORAGE_FAILED:
+        return $localize`Move to external storage failed`
 
-    if (video.state.id === VideoState.TO_EDIT) {
-      return $localize`To edit`
+      case VideoState.TO_TRANSCODE:
+        return video.waitTranscoding === true
+          ? $localize`Waiting transcoding`
+          : $localize`To transcode`
+
+      case VideoState.TO_IMPORT:
+        return $localize`To import`
+
+      case VideoState.TO_EDIT:
+        return $localize`To edit`
     }
 
     return ''
+  }
+
+  getAriaLabel () {
+    return $localize`Watch video ${this.video.name}`
   }
 
   loadActions () {

@@ -2,11 +2,12 @@ import { SortMeta } from 'primeng/api'
 import { Component, OnInit } from '@angular/core'
 import { ConfirmService, Notifier, RestPagination, RestTable } from '@app/core'
 import { DropdownAction } from '@app/shared/shared-main'
-import { RunnerRegistrationToken } from '@shared/models'
+import { RunnerRegistrationToken } from '@peertube/peertube-models'
 import { RunnerService } from '../runner.service'
 
 @Component({
   selector: 'my-runner-registration-token-list',
+  styleUrls: [ './runner-registration-token-list.component.scss' ],
   templateUrl: './runner-registration-token-list.component.html'
 })
 export class RunnerRegistrationTokenListComponent extends RestTable <RunnerRegistrationToken> implements OnInit {

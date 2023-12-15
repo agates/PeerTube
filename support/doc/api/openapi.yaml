@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: PeerTube
-  version: 5.1.0
+  version: 5.2.0
   contact:
     name: PeerTube Community
     url: https://joinpeertube.org
@@ -53,7 +53,7 @@ info:
     }
     ```
 
-    We provide error `type` values for [a growing number of cases](https://github.com/Chocobozzz/PeerTube/blob/develop/shared/models/server/server-error-code.enum.ts),
+    We provide error `type` values for [a growing number of cases](https://github.com/Chocobozzz/PeerTube/blob/develop/packages/models/src/server/core-error-code.enum.ts),
     but it is still optional. Types are used to disambiguate errors that bear the same status code
     and are non-obvious:
 
@@ -257,6 +257,8 @@ tags:
     description: Operations dealing with synchronizing PeerTube user's channel with channels of other platforms
   - name: Video Captions
     description: Operations dealing with listing, adding and removing closed captions of a video.
+  - name: Video Chapters
+    description: Operations dealing with managing chapters of a video.
   - name: Video Channels
     description: Operations dealing with the creation, modification and listing of videos within a channel.
   - name: Video Comments
@@ -300,6 +302,8 @@ tags:
   - name: Runner Registration Token
     description: |
       Manage runner registration token
+  - name: Video Passwords
+    description: Operation on video passwords
 
 x-tagGroups:
   - name: Static endpoints
@@ -326,6 +330,7 @@ x-tagGroups:
       - Video Upload
       - Video Imports
       - Video Captions
+      - Video Chapters
       - Video Channels
       - Video Comments
       - Video Rates
@@ -337,6 +342,7 @@ x-tagGroups:
       - Video Transcoding
       - Live Videos
       - Channels Sync
+      - Video Passwords
   - name: Search
     tags:
       - Search
@@ -363,11 +369,12 @@ x-tagGroups:
       - Runners
 
 paths:
-  '/static/webseed/{filename}':
+  '/static/web-videos/{filename}':
     get:
       tags:
         - Static Video Files
-      summary: Get public WebTorrent video file
+      summary: Get public Web Video file
+      description: "**PeerTube >= 6.0**"
       parameters:
         - $ref: '#/components/parameters/staticFilename'
       responses:
@@ -375,11 +382,12 @@ paths:
           description: successful operation
         '404':
           description: not found
-  '/static/webseed/private/{filename}':
+  '/static/web-videos/private/{filename}':
     get:
       tags:
         - Static Video Files
-      summary: Get private WebTorrent video file
+      summary: Get private Web Video file
+      description: "**PeerTube >= 6.0**"
       parameters:
         - $ref: '#/components/parameters/staticFilename'
         - $ref: '#/components/parameters/videoFileToken'
@@ -571,7 +579,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
       responses:
         '200':
           description: successful operation
@@ -655,7 +663,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
       responses:
         '200':
           description: successful operation
@@ -745,7 +753,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
         - $ref: '#/components/parameters/skipCount'
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
@@ -915,7 +923,7 @@ paths:
           description: >
             Arises when:
               - the emailer is disabled and the instance is open to registrations
-              - webtorrent and hls are disabled with transcoding enabled - you need at least one enabled
+              - web videos and hls are disabled with transcoding enabled - you need at least one enabled
     delete:
       summary: Delete instance runtime configuration
       operationId: delCustomConfig
@@ -1870,7 +1878,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
         - $ref: '#/components/parameters/skipCount'
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
@@ -2359,6 +2367,7 @@ paths:
         - OAuth2: []
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -2414,7 +2423,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
         - $ref: '#/components/parameters/skipCount'
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
@@ -2578,6 +2587,8 @@ paths:
                   format: date-time
                 scheduleUpdate:
                   $ref: '#/components/schemas/VideoScheduledUpdate'
+                videoPasswords:
+                  $ref: '#/components/schemas/AddVideoPasswords'
             encoding:
               thumbnailfile:
                 contentType: image/jpeg
@@ -2590,6 +2601,7 @@ paths:
         - Video
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -2597,6 +2609,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VideoDetails'
+        '403':
+          description: provide a correct password to access this password protected video
     delete:
       summary: Delete a video
       operationId: delVideo
@@ -2618,6 +2632,7 @@ paths:
         - Video
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -2630,22 +2645,6 @@ paths:
                 maxLength: 10000
                 example: |
                   **[Want to help to translate this video?](https://weblate.framasoft.org/projects/what-is-peertube-video/)**\r\n\r\n**Take back the control of your videos! [#JoinPeertube](https://joinpeertube.org)**
-
-  '/api/v1/videos/{id}/source':
-    post:
-      summary: Get video source file metadata
-      operationId: getVideoSource
-      tags:
-        - Video
-      parameters:
-        - $ref: '#/components/parameters/idOrUUID'
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VideoSource'
 
   '/api/v1/videos/{id}/views':
     post:
@@ -2861,21 +2860,8 @@ paths:
         - Video
         - Video Upload
       parameters:
-        - name: X-Upload-Content-Length
-          in: header
-          schema:
-            type: number
-            example: 2469036
-          required: true
-          description: Number of bytes that will be uploaded in subsequent requests. Set this value to the size of the file you are uploading.
-        - name: X-Upload-Content-Type
-          in: header
-          schema:
-            type: string
-            format: mimetype
-            example: video/mp4
-          required: true
-          description: MIME type of the file that you are uploading. Depending on your instance settings, acceptable values might vary.
+        - $ref: '#/components/parameters/resumableUploadInitContentLengthHeader'
+        - $ref: '#/components/parameters/resumableUploadInitContentTypeHeader'
       requestBody:
         content:
           application/json:
@@ -2914,36 +2900,9 @@ paths:
         - Video
         - Video Upload
       parameters:
-        - name: upload_id
-          in: query
-          required: true
-          description: |
-            Created session id to proceed with. If you didn't send chunks in the last hour, it is
-            not valid anymore and you need to initialize a new upload.
-          schema:
-            type: string
-        - name: Content-Range
-          in: header
-          schema:
-            type: string
-            example: bytes 0-262143/2469036
-          required: true
-          description: |
-            Specifies the bytes in the file that the request is uploading.
-
-            For example, a value of `bytes 0-262143/1000000` shows that the request is sending the first
-            262144 bytes (256 x 1024) in a 2,469,036 byte file.
-        - name: Content-Length
-          in: header
-          schema:
-            type: number
-            example: 262144
-          required: true
-          description: |
-            Size of the chunk that the request is sending.
-
-            Remember that larger chunks are more efficient. PeerTube's web client uses chunks varying from
-            1048576 bytes (~1MB) and increases or reduces size depending on connection health.
+        - $ref: '#/components/parameters/resumableUploadId'
+        - $ref: '#/components/parameters/resumableUploadChunkContentRangeHeader'
+        - $ref: '#/components/parameters/resumableUploadChunkContentLengthHeader'
       requestBody:
         content:
           application/octet-stream:
@@ -2999,14 +2958,7 @@ paths:
         - Video
         - Video Upload
       parameters:
-        - name: upload_id
-          in: query
-          required: true
-          description: |
-            Created session id to proceed with. If you didn't send chunks in the last 12 hours, it is
-            not valid anymore and the upload session has already been deleted with its data ;-)
-          schema:
-            type: string
+        - $ref: '#/components/parameters/resumableUploadId'
         - name: Content-Length
           in: header
           required: true
@@ -3267,6 +3219,7 @@ paths:
         - Live Videos
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -3274,6 +3227,140 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LiveVideoSessionResponse'
+
+  '/api/v1/videos/{id}/source':
+    get:
+      summary: Get video source file metadata
+      operationId: getVideoSource
+      tags:
+        - Video
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoSource'
+
+  '/api/v1/videos/{id}/source/replace-resumable':
+    post:
+      summary: Initialize the resumable replacement of a video
+      description: "**PeerTube >= 6.0** Uses [a resumable protocol](https://github.com/kukhariev/node-uploadx/blob/master/proto.md) to initialize the replacement of a video"
+      operationId: replaceVideoSourceResumableInit
+      security:
+        - OAuth2: []
+      tags:
+        - Video
+        - Video Upload
+      parameters:
+        - $ref: '#/components/parameters/resumableUploadInitContentLengthHeader'
+        - $ref: '#/components/parameters/resumableUploadInitContentTypeHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoReplaceSourceRequestResumable'
+      responses:
+        '200':
+          description: file already exists, send a [`resume`](https://github.com/kukhariev/node-uploadx/blob/master/proto.md) request instead
+        '201':
+          description: created
+          headers:
+            Location:
+              schema:
+                type: string
+                format: url
+            Content-Length:
+              schema:
+                type: number
+                example: 0
+        '413':
+          x-summary: video file too large, due to quota, absolute max file size or concurrent partial upload limit
+          description: |
+            Disambiguate via `type`:
+            - `max_file_size_reached` for the absolute file size limit
+            - `quota_reached` for quota limits whether daily or global
+        '415':
+          description: video type unsupported
+    put:
+      summary: Send chunk for the resumable replacement of a video
+      description: "**PeerTube >= 6.0** Uses [a resumable protocol](https://github.com/kukhariev/node-uploadx/blob/master/proto.md) to continue, pause or resume the replacement of a video"
+      operationId: replaceVideoSourceResumable
+      security:
+        - OAuth2: []
+      tags:
+        - Video
+        - Video Upload
+      parameters:
+        - $ref: '#/components/parameters/resumableUploadId'
+        - $ref: '#/components/parameters/resumableUploadChunkContentRangeHeader'
+        - $ref: '#/components/parameters/resumableUploadChunkContentLengthHeader'
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '204':
+          description: 'last chunk received: successful operation'
+        '308':
+          description: resume incomplete
+          headers:
+            Range:
+              schema:
+                type: string
+                example: bytes=0-262143
+            Content-Length:
+              schema:
+                type: number
+                example: 0
+        '403':
+          description: video didn't pass file replacement filter
+        '404':
+          description: replace upload not found
+        '409':
+          description: chunk doesn't match range
+        '422':
+          description: video unreadable
+        '429':
+          description: too many concurrent requests
+        '503':
+          description: upload is already being processed
+          headers:
+            'Retry-After':
+              schema:
+                type: number
+                example: 300
+    delete:
+      summary: Cancel the resumable replacement of a video
+      description: "**PeerTube >= 6.0** Uses [a resumable protocol](https://github.com/kukhariev/node-uploadx/blob/master/proto.md) to cancel the replacement of a video"
+      operationId: replaceVideoSourceResumableCancel
+      security:
+        - OAuth2: []
+      tags:
+        - Video
+        - Video Upload
+      parameters:
+        - $ref: '#/components/parameters/resumableUploadId'
+        - name: Content-Length
+          in: header
+          required: true
+          schema:
+            type: number
+            example: 0
+      responses:
+        '204':
+          description: source file replacement cancelled
+          headers:
+            Content-Length:
+              schema:
+                type: number
+                example: 0
+        '404':
+          description: source file replacement not found
 
   /api/v1/users/me/abuses:
     get:
@@ -3657,6 +3744,28 @@ paths:
                     items:
                       $ref: '#/components/schemas/VideoBlacklist'
 
+  /api/v1/videos/{id}/storyboards:
+    get:
+      summary: List storyboards of a video
+      description: "**PeerTube** >= 6.0"
+      operationId: listVideoStoryboards
+      tags:
+        - Video
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  storyboards:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Storyboard'
+
   /api/v1/videos/{id}/captions:
     get:
       summary: List captions of a video
@@ -3665,6 +3774,7 @@ paths:
         - Video Captions
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -3727,6 +3837,122 @@ paths:
           description: successful operation
         '404':
           description: video or language or caption for that language not found
+
+  /api/v1/videos/{id}/chapters:
+    get:
+      summary: Get chapters of a video
+      description: "**PeerTube** >= 6.0"
+      operationId: getVideoChapters
+      tags:
+        - Video Chapters
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoChapters'
+    put:
+      summary: Replace video chapters
+      description: "**PeerTube** >= 6.0"
+      operationId: replaceVideoChapters
+      security:
+        - OAuth2:
+          - user
+      tags:
+        - Video Chapters
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chapters:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                      timecode:
+                        type: integer
+      responses:
+        '204':
+          description: successful operation
+        '404':
+          description: video not found
+
+  /api/v1/videos/{id}/passwords:
+    get:
+      summary: List video passwords
+      description: "**PeerTube** >= 6.0"
+      security:
+        - OAuth2:
+          - user
+      tags:
+        - Video Passwords
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/start'
+        - $ref: '#/components/parameters/count'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        '204':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoPasswordList'
+        '400':
+          description: video is not password protected
+    put:
+      summary: Update video passwords
+      description: "**PeerTube** >= 6.0"
+      security:
+        - OAuth2:
+          - user
+      tags:
+        - Video Passwords
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                passwords:
+                  $ref: '#/components/schemas/AddVideoPasswords'
+      responses:
+        '204':
+          description: successful operation
+        '400':
+          description: video is not password protected
+
+  /api/v1/videos/{id}/passwords/{videoPasswordId}:
+    delete:
+      summary: Delete a video password
+      description: "**PeerTube** >= 6.0"
+      security:
+        - OAuth2:
+          - user
+      tags:
+        - Video Passwords
+      parameters:
+        - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordId'
+      responses:
+        '204':
+          description: successful operation
+        '403':
+          description: cannot delete the last password of the protected video
+        '400':
+          description: video is not password protected
 
   /api/v1/video-channels:
     get:
@@ -3836,7 +4062,7 @@ paths:
         - $ref: '#/components/parameters/include'
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
         - $ref: '#/components/parameters/skipCount'
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
@@ -4554,6 +4780,7 @@ paths:
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
         - $ref: '#/components/parameters/commentsSort'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -4600,6 +4827,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
         - $ref: '#/components/parameters/threadId'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -4618,6 +4846,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
         - $ref: '#/components/parameters/commentId'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       responses:
         '200':
           description: successful operation
@@ -4668,6 +4897,7 @@ paths:
         - Video Rates
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
+        - $ref: '#/components/parameters/videoPasswordHeader'
       requestBody:
         content:
           application/json:
@@ -4703,15 +4933,16 @@ paths:
           description: successful operation
         '404':
           description: video does not exist
-  '/api/v1/videos/{id}/webtorrent':
+  '/api/v1/videos/{id}/web-videos':
     delete:
-      summary: Delete video WebTorrent files
+      summary: Delete video Web Video files
+      description: "**PeerTube >= 6.0**"
       security:
         - OAuth2:
           - admin
       tags:
         - Video Files
-      operationId: delVideoWebTorrent
+      operationId: delVideoWebVideos
       parameters:
         - $ref: '#/components/parameters/idOrUUID'
       responses:
@@ -4741,7 +4972,11 @@ paths:
                     type: string
                     enum:
                       - hls
-                      - webtorrent
+                      - web-video
+                  forceTranscoding:
+                    type: boolean
+                    default: false
+                    description: If the video is stuck in transcoding state, do it anyway
                 required:
                   - transcodingType
       responses:
@@ -4779,7 +5014,7 @@ paths:
         - $ref: '#/components/parameters/privacyOneOf'
         - $ref: '#/components/parameters/uuids'
         - $ref: '#/components/parameters/hasHLSFiles'
-        - $ref: '#/components/parameters/hasWebtorrentFiles'
+        - $ref: '#/components/parameters/hasWebVideoFiles'
         - $ref: '#/components/parameters/skipCount'
         - $ref: '#/components/parameters/start'
         - $ref: '#/components/parameters/count'
@@ -5916,6 +6151,21 @@ paths:
         '204':
           description: successful operation
 
+  /api/v1/runners/jobs/{jobUUID}:
+    delete:
+      summary: Delete a job
+      description: The endpoint will first cancel the job if needed, and then remove it from the database. Children jobs will also be removed
+      security:
+        - OAuth2:
+          - admin
+      tags:
+        - Runner Jobs
+      parameters:
+        - $ref: '#/components/parameters/jobUUID'
+      responses:
+        '204':
+          description: successful operation
+
   /api/v1/runners/jobs:
     get:
       summary: List jobs
@@ -5929,6 +6179,13 @@ paths:
         - $ref: '#/components/parameters/count'
         - $ref: '#/components/parameters/runnerJobSort'
         - $ref: '#/components/parameters/search'
+        - name: stateOneOf
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/RunnerJobState'
       responses:
         '200':
           description: successful operation
@@ -6370,13 +6627,13 @@ components:
       schema:
         type: boolean
       description: '**PeerTube >= 4.0** Display only videos that have HLS files'
-    hasWebtorrentFiles:
-      name: hasWebtorrentFiles
+    hasWebVideoFiles:
+      name: hasWebVideoFiles
       in: query
       required: false
       schema:
         type: boolean
-      description: '**PeerTube >= 4.0** Display only videos that have WebTorrent files'
+      description: '**PeerTube >= 6.0** Display only videos that have Web Video files'
     privacyOneOf:
       name: privacyOneOf
       in: query
@@ -6525,6 +6782,71 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/UUIDv4'
+    videoPasswordId:
+      name: videoPasswordId
+      in: path
+      required: true
+      description: The video password id
+      schema:
+        $ref: '#/components/schemas/id'
+    videoPasswordHeader:
+      name: x-peertube-video-password
+      description: Required on password protected video
+      in: header
+      required: false
+      schema:
+        type: string
+    resumableUploadInitContentLengthHeader:
+        name: X-Upload-Content-Length
+        in: header
+        schema:
+          type: number
+          example: 2469036
+        required: true
+        description: Number of bytes that will be uploaded in subsequent requests. Set this value to the size of the file you are uploading.
+    resumableUploadInitContentTypeHeader:
+      name: X-Upload-Content-Type
+      in: header
+      schema:
+        type: string
+        format: mimetype
+        example: video/mp4
+      required: true
+      description: MIME type of the file that you are uploading. Depending on your instance settings, acceptable values might vary.
+    resumableUploadChunkContentRangeHeader:
+      name: Content-Range
+      in: header
+      schema:
+        type: string
+        example: bytes 0-262143/2469036
+      required: true
+      description: |
+        Specifies the bytes in the file that the request is uploading.
+
+        For example, a value of `bytes 0-262143/1000000` shows that the request is sending the first
+        262144 bytes (256 x 1024) in a 2,469,036 byte file.
+    resumableUploadChunkContentLengthHeader:
+      name: Content-Length
+      in: header
+      schema:
+        type: number
+        example: 262144
+      required: true
+      description: |
+        Size of the chunk that the request is sending.
+
+        Remember that larger chunks are more efficient. PeerTube's web client uses chunks varying from
+        1048576 bytes (~1MB) and increases or reduces size depending on connection health.
+    resumableUploadId:
+      name: upload_id
+      in: query
+      required: true
+      description: |
+        Created session id to proceed with. If you didn't send chunks in the last hour, it is
+        not valid anymore and you need to initialize a new upload.
+      schema:
+        type: string
+
 
   securitySchemes:
     OAuth2:
@@ -7015,7 +7337,7 @@ components:
           maxLength: 120
         thumbnailPath:
           type: string
-          example: /static/thumbnails/a65bc12f-9383-462e-81ae-8207e8b434ee.jpg
+          example: /lazy-static/thumbnails/a65bc12f-9383-462e-81ae-8207e8b434ee.jpg
         previewPath:
           type: string
           example: /lazy-static/previews/a65bc12f-9383-462e-81ae-8207e8b434ee.jpg
@@ -7095,6 +7417,11 @@ components:
               type: boolean
             downloadEnabled:
               type: boolean
+            inputFileUpdatedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Latest input file update. Null if the file has never been replaced since the original upload
             trackerUrls:
               type: array
               items:
@@ -7108,7 +7435,7 @@ components:
               items:
                 $ref: '#/components/schemas/VideoFile'
               description: |
-                WebTorrent/raw video files. If WebTorrent is disabled on the server:
+                Web compatible video files. If Web Video is disabled on the server:
 
                 - field will be empty
                 - video files will be found in `streamingPlaylists[].files` field
@@ -7416,16 +7743,42 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VideoCommentThreadTree'
+    Storyboard:
+      properties:
+        storyboardPath:
+          type: string
+        totalHeight:
+          type: integer
+        totalWidth:
+          type: integer
+        spriteHeight:
+          type: integer
+        spriteWidth:
+          type: integer
+        spriteDuration:
+          type: integer
     VideoCaption:
       properties:
         language:
           $ref: '#/components/schemas/VideoConstantString-Language'
         captionPath:
           type: string
+    VideoChapters:
+      properties:
+        chapters:
+          type: object
+          properties:
+            title:
+              type: string
+            timecode:
+              type: integer
     VideoSource:
       properties:
         filename:
           type: string
+        createdAt:
+          type: string
+          format: date-time
     ActorImage:
       properties:
         path:
@@ -7640,7 +7993,7 @@ components:
               properties:
                 enabled:
                   type: boolean
-            webtorrent:
+            web_videos:
               type: object
               properties:
                 enabled:
@@ -8006,15 +8359,15 @@ components:
                   type: boolean
                 2160p:
                   type: boolean
-            webtorrent:
+            web_videos:
               type: object
-              description: WebTorrent-specific settings
+              description: Web Video specific settings
               properties:
                 enabled:
                   type: boolean
             hls:
               type: object
-              description: HLS-specific settings
+              description: HLS specific settings
               properties:
                 enabled:
                   type: boolean
@@ -8228,6 +8581,8 @@ components:
           description: Video preview file
           type: string
           format: binary
+        videoPasswords:
+          $ref: '#/components/schemas/AddVideoPasswords'
       required:
         - channelId
         - name
@@ -8273,6 +8628,13 @@ components:
               $ref: '#/components/schemas/Video/properties/uuid'
             shortUUID:
               $ref: '#/components/schemas/Video/properties/shortUUID'
+    VideoReplaceSourceRequestResumable:
+      properties:
+        filename:
+          description: Video filename including extension
+          type: string
+          format: filename
+          example: what_is_peertube.mp4
     CommentThreadResponse:
       properties:
         total:
@@ -8458,7 +8820,6 @@ components:
         password:
           $ref: '#/components/schemas/password'
     UpdateMe:
-      # see shared/models/users/user-update-me.model.ts:
       properties:
         password:
           $ref: '#/components/schemas/password'
@@ -9391,19 +9752,24 @@ components:
           type: string
           enum:
             - 'p2p-media-loader'
-            - 'webtorrent'
+            - 'web-video'
         resolution:
           type: number
           description: Current player video resolution
         fps:
           type: number
           description: Current player video fps
+        p2pEnabled:
+          type: boolean
+        p2pPeers:
+          type: number
+          description: P2P peers connected (doesn't include WebSeed peers)
         resolutionChanges:
           type: number
-          description: How many resolution changes occured since the last metric creation
+          description: How many resolution changes occurred since the last metric creation
         errors:
           type: number
-          description: How many errors occured since the last metric creation
+          description: How many errors occurred since the last metric creation
         downloadedBytesP2P:
           type: number
           description: How many bytes were downloaded with P2P since the last metric creation
@@ -9425,6 +9791,7 @@ components:
         - downloadedBytesP2P
         - downloadedBytesHTTP
         - uploadedBytesP2P
+        - p2pEnabled
         - videoId
 
     RunnerRegistrationToken:
@@ -9616,6 +9983,29 @@ components:
             privatePayload:
               type: object
 
+    VideoPassword:
+      properties:
+        id:
+          $ref: '#/components/schemas/id'
+        password:
+          type: string
+          minLength: 2
+        videoId:
+          $ref: '#/components/schemas/id'
+    VideoPasswordList:
+      properties:
+        total:
+          type: integer
+          example: 1
+        data:
+          type: array
+          items:
+              $ref: '#/components/schemas/VideoPassword'
+    AddVideoPasswords:
+      type: array
+      items:
+        $ref: "#/components/schemas/VideoPassword/properties/password"
+      uniqueItems: true
   callbacks:
     searchIndex:
       'https://search.example.org/api/v1/search/videos':

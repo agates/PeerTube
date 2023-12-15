@@ -1,9 +1,9 @@
 import { SortMeta } from 'primeng/api'
 import { Component, OnInit } from '@angular/core'
 import { Notifier, RestPagination, RestTable } from '@app/core'
+import { escapeHTML } from '@peertube/peertube-core-utils'
+import { Job, JobState, JobType } from '@peertube/peertube-models'
 import { peertubeLocalStorage } from '@root-helpers/peertube-web-storage'
-import { escapeHTML } from '@shared/core-utils/renderer'
-import { Job, JobState, JobType } from '@shared/models'
 import { JobStateClient } from '../../../../types/job-state-client.type'
 import { JobTypeClient } from '../../../../types/job-type-client.type'
 import { JobService } from './job.service'
@@ -35,9 +35,12 @@ export class JobsComponent extends RestTable implements OnInit {
     'after-video-channel-import',
     'email',
     'federate-video',
+    'generate-video-storyboard',
     'manage-video-torrent',
+    'move-to-file-system',
     'move-to-object-storage',
     'notify',
+    'transcoding-job-builder',
     'video-channel-import',
     'video-file-import',
     'video-import',

@@ -17,14 +17,17 @@
       <button class="primary-row button-unstyle" (click)="toggleMainPlaylist($event, playlist)">
         <my-peertube-checkbox
           [disabled]="isPresentMultipleTimes(playlist) || playlist.optionalRowDisplayed" [inputName]="getPrimaryInputName(playlist)"
-          [ngModel]="isPrimaryCheckboxChecked(playlist)" [onPushWorkaround]="true"
+          [ngModel]="isPrimaryCheckboxChecked(playlist)"
         ></my-peertube-checkbox>
 
         <label [for]="getPrimaryInputName(playlist)" class="display-name">
           {{ playlist.displayName }}
         </label>
 
-        <button class="optional-row-icon button-unstyle" *ngIf="isPrimaryCheckboxChecked(playlist)" (click)="$event.stopPropagation(); toggleOptionalRow(playlist)">
+        <button
+          class="optional-row-icon button-unstyle" [ngClass]="{ 'invisible': !isPrimaryCheckboxChecked(playlist) }"
+          (click)="$event.stopPropagation(); toggleOptionalRow(playlist)"
+        >
           <my-global-icon iconName="add" aria-hidden="true"></my-global-icon>
         </button>
       </button>
@@ -36,7 +39,7 @@
         <ng-container *ngFor="let element of buildOptionalRowElements(playlist)">
           <my-peertube-checkbox
             [inputName]="getOptionalInputName(playlist, element)"
-            [ngModel]="element.enabled" [onPushWorkaround]="true"
+            [ngModel]="element.enabled"
             (click)="toggleOptionalPlaylist($event, playlist, element, startAt.timestamp, stopAt.timestamp)"
           ></my-peertube-checkbox>
 
@@ -71,7 +74,7 @@
         type="text" id="displayName"
         formControlName="displayName" [ngClass]="{ 'input-error': formErrors['displayName'] }"
       >
-      <div *ngIf="formErrors['displayName']" class="form-error">
+      <div *ngIf="formErrors['displayName']" class="form-error" role="alert">
         {{ formErrors['displayName'] }}
       </div>
     </div>

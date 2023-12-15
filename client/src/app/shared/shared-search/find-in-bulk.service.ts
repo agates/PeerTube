@@ -3,11 +3,10 @@ import { Observable, Subject } from 'rxjs'
 import { filter, first, map } from 'rxjs/operators'
 import { Injectable } from '@angular/core'
 import { buildBulkObservable } from '@app/helpers'
-import { ResultList } from '@shared/models/common'
 import { Video, VideoChannel } from '../shared-main'
 import { VideoPlaylist } from '../shared-video-playlist'
-import { SearchService } from './search.service'
 import { AdvancedSearch } from './advanced-search.model'
+import { SearchService } from './search.service'
 
 const debugLogger = debug('peertube:search:FindInBulkService')
 
@@ -21,9 +20,9 @@ export class FindInBulkService {
 
   private advancedSearchForBulk: AdvancedSearch
 
-  private getVideoInBulk: BulkObservables<string, ResultList<Video>>
-  private getChannelInBulk: BulkObservables<string, ResultList<VideoChannel>>
-  private getPlaylistInBulk: BulkObservables<string, ResultList<VideoPlaylist>>
+  private getVideoInBulk: BulkObservables<string, { data: Video[] }>
+  private getChannelInBulk: BulkObservables<string, { data: VideoChannel[] }>
+  private getPlaylistInBulk: BulkObservables<string, { data: VideoPlaylist[] }>
 
   constructor (
     private searchService: SearchService
@@ -66,7 +65,7 @@ export class FindInBulkService {
   }
 
   private getData <P extends number | string, R> (options: {
-    observableObject: BulkObservables<P, ResultList<R>>
+    observableObject: BulkObservables<P, { data: R[] }>
     param: P
     finder: (d: R) => boolean
   }) {
@@ -104,6 +103,7 @@ export class FindInBulkService {
     return this.searchService.searchVideos({
       uuids,
       componentPagination: { itemsPerPage: uuids.length, currentPage: 1 },
+      skipCount: true,
       advancedSearch: this.advancedSearchForBulk
     })
   }

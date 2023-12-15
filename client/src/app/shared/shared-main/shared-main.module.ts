@@ -31,7 +31,7 @@ import {
   PeerTubeTemplateDirective
 } from './angular'
 import { AUTH_INTERCEPTOR_PROVIDER } from './auth'
-import { ActionDropdownComponent, ButtonComponent, DeleteButtonComponent, EditButtonComponent } from './buttons'
+import { ActionDropdownComponent, ButtonComponent, CopyButtonComponent, DeleteButtonComponent, EditButtonComponent } from './buttons'
 import { CustomPageService } from './custom-page'
 import { DateToggleComponent } from './date'
 import { FeedComponent } from './feeds'
@@ -49,9 +49,11 @@ import { UserHistoryService, UserNotificationsComponent, UserNotificationService
 import {
   EmbedComponent,
   RedundancyService,
+  VideoChapterService,
   VideoFileTokenService,
   VideoImportService,
   VideoOwnershipService,
+  VideoPasswordService,
   VideoResolver,
   VideoService
 } from './video'
@@ -99,6 +101,7 @@ import { VideoChannelService } from './video-channel'
 
     ActionDropdownComponent,
     ButtonComponent,
+    CopyButtonComponent,
     DeleteButtonComponent,
     EditButtonComponent,
 
@@ -161,6 +164,7 @@ import { VideoChannelService } from './video-channel'
 
     ActionDropdownComponent,
     ButtonComponent,
+    CopyButtonComponent,
     DeleteButtonComponent,
     EditButtonComponent,
 
@@ -209,6 +213,10 @@ import { VideoChannelService } from './video-channel'
     VideoCaptionService,
 
     VideoChannelService,
+
+    VideoPasswordService,
+
+    VideoChapterService,
 
     CustomPageService,
 

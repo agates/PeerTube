@@ -3,6 +3,16 @@
 @use '_mixins' as *;
 @use './_player-variables' as *;
 
+.vjs-peertube-skin.has-chapter {
+  .vjs-time-tooltip {
+    white-space: pre;
+    line-height: 1.5;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    top: -4.9em;
+  }
+}
+
 .video-js.vjs-peertube-skin .vjs-control-bar {
   z-index: 100;
 
@@ -12,11 +22,8 @@
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
   transition: visibility 0.3s, opacity 0.3s !important;
 
-  &.control-bar-hidden {
-    display: none !important;
-  }
-
-  > button:first-child {
+  > button:not(.vjs-hidden):first-child,
+  > button.vjs-hidden + button:not(.vjs-hidden) {
     @include margin-left($first-control-bar-element-margin-left);
   }
 
@@ -79,6 +86,7 @@
           top: -0.3em;
         }
 
+        // Only used on mobile
         .vjs-time-tooltip {
           display: none;
         }
@@ -152,7 +160,7 @@
     }
   }
 
-  .vjs-live-control {
+  .vjs-pt-live-control {
     padding: 5px 7px;
     border-radius: 3px;
     height: fit-content;
@@ -163,6 +171,7 @@
     line-height: normal;
     position: relative;
     top: -1px;
+    width: auto;
 
     &.synced-with-live-edge {
       background: #d7281c;
@@ -172,6 +181,10 @@
       cursor: pointer;
       background: #80807f;
     }
+  }
+
+  .vjs-live-display {
+    white-space: nowrap;
   }
 
   .vjs-peertube {
@@ -230,6 +243,7 @@
   .vjs-next-video,
   .vjs-previous-video {
     width: $control-bar-button-width - 4px;
+    cursor: pointer;
 
     &.vjs-disabled {
       cursor: default;
@@ -495,4 +509,13 @@
       }
     }
   }
+}
+
+.vjs-marker {
+  position: absolute;
+  width: 3px;
+  opacity: .5;
+  background-color: #000;
+  height: 100%;
+  top: 0;
 }

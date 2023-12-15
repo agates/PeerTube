@@ -20,7 +20,7 @@ yarn add @peertube/embed-api
 Now just use the `PeerTubePlayer` class exported by the module:
 
 ```typescript
-import { PeerTubePlayer } from '@peertube/embed-api'
+import { PeerTubePlayer } from '@peertube/embed-api.js'
 
 ...
 ```
@@ -52,7 +52,7 @@ player.pause()
 ## Embed URL parameters
 
 You can customize PeerTube player by specifying URL query parameters.
-For example `https://my-instance.example.com/videos/embed/52a10666-3a18-4e73-93da-e8d3c12c305a??start=1s&stop=18s&loop=1&autoplay=1&muted=1&warningTitle=0&controlBar=0&peertubeLink=0&p2p=0`
+For example `https://my-instance.example.com/videos/embed/52a10666-3a18-4e73-93da-e8d3c12c305a?start=1s&stop=18s&loop=1&autoplay=1&muted=1&warningTitle=0&controlBar=0&peertubeLink=0&p2p=0`
 
 ### start
 
@@ -108,6 +108,10 @@ Most web browsers disable video autoplay if the user did not interact with the v
 
 Value must be `0` or `1`.
 
+### playbackRate
+
+Force the default playback rate (`0.75`, `1.5` etc).
+
 ### title
 
 Hide embed title.
@@ -142,13 +146,28 @@ Value must be a valid color (`red` or `rgba(100, 100, 100, 0.5)`).
 
 Force a specific player engine.
 
-Value must be a valid mode (`webtorrent` or `p2p-media-loader`).
+Value must be a valid mode (`web-video` or `p2p-media-loader`).
 
 ### api
 
 Enable embed JavaScript API (see methods below).
 
 Value must be `0` or `1`.
+
+### waitPasswordFromEmbedAPI
+
+**PeerTube >= 6.0**
+
+If the video requires a password, PeerTube will wait a password provided by `setVideoPassword` method before loading the video.
+
+Until you provide a password, `player.ready` is not resolved.
+
+
+## Embed attributes
+
+### `ready: Promise<void>`
+
+This promise is resolved when the video is loaded an the player is ready.
 
 
 ## Embed methods
@@ -232,6 +251,15 @@ Play previous video in playlist.
 ### `getCurrentPosition(): Promise<void>`
 
 Get current position in playlist (starts from 1).
+
+
+### `setVideoPassword(): Promise<void>`
+
+**PeerTube >= 6.0**
+
+Set the video password so the user doesn't have to manually fill it.
+`waitPasswordFromEmbedAPI=1` is required in embed URL.
+
 
 ## Embed events
 

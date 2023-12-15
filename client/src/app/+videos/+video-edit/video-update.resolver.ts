@@ -4,8 +4,9 @@ import { Injectable } from '@angular/core'
 import { ActivatedRouteSnapshot } from '@angular/router'
 import { AuthService } from '@app/core'
 import { listUserChannelsForSelect } from '@app/helpers'
-import { VideoCaptionService, VideoDetails, VideoService } from '@app/shared/shared-main'
+import { VideoCaptionService, VideoChapterService, VideoDetails, VideoPasswordService, VideoService } from '@app/shared/shared-main'
 import { LiveVideoService } from '@app/shared/shared-video-live'
+import { VideoPrivacy } from '@peertube/peertube-models'
 
 @Injectable()
 export class VideoUpdateResolver {
@@ -13,7 +14,9 @@ export class VideoUpdateResolver {
     private videoService: VideoService,
     private liveVideoService: LiveVideoService,
     private authService: AuthService,
-    private videoCaptionService: VideoCaptionService
+    private videoCaptionService: VideoCaptionService,
+    private videoChapterService: VideoChapterService,
+    private videoPasswordService: VideoPasswordService
   ) {
   }
 
@@ -21,11 +24,11 @@ export class VideoUpdateResolver {
     const uuid: string = route.params['uuid']
 
     return this.videoService.getVideo({ videoId: uuid })
-               .pipe(
-                 switchMap(video => forkJoin(this.buildVideoObservables(video))),
-                 map(([ video, videoSource, videoChannels, videoCaptions, liveVideo ]) =>
-                   ({ video, videoChannels, videoCaptions, videoSource, liveVideo }))
-               )
+                .pipe(
+                  switchMap(video => forkJoin(this.buildVideoObservables(video))),
+                  map(([ video, videoSource, videoChannels, videoCaptions, videoChapters, liveVideo, videoPassword ]) =>
+                    ({ video, videoChannels, videoCaptions, videoChapters, videoSource, liveVideo, videoPassword }))
+                )
   }
 
   private buildVideoObservables (video: VideoDetails) {
@@ -44,8 +47,18 @@ export class VideoUpdateResolver {
           map(result => result.data)
         ),
 
+      this.videoChapterService
+        .getChapters({ videoId: video.uuid })
+        .pipe(
+          map(({ chapters }) => chapters)
+        ),
+
       video.isLive
         ? this.liveVideoService.getVideoLive(video.id)
+        : of(undefined),
+
+      video.privacy.id === VideoPrivacy.PASSWORD_PROTECTED
+        ? this.videoPasswordService.getVideoPasswords({ videoUUID: video.uuid })
         : of(undefined)
     ]
   }

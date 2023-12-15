@@ -2,9 +2,7 @@
   [value]="abuses" [paginator]="totalRecords > 0" [totalRecords]="totalRecords" [rows]="rowsPerPage" [first]="pagination.start"
   [rowsPerPageOptions]="rowsPerPageOptions" [sortField]="sort.field" [sortOrder]="sort.order" dataKey="id" [resizableColumns]="true"
   [lazy]="true" (onLazyLoad)="loadLazy($event)" [lazyLoadOnInit]="false"
-  [showCurrentPageReport]="true" i18n-currentPageReportTemplate
-  currentPageReportTemplate="Showing {{'{first}'}} to {{'{last}'}} of {{'{totalRecords}'}} reports"
-  [expandedRowKeys]="expandedRows"
+  [showCurrentPageReport]="true" [currentPageReportTemplate]="getPaginationTemplate()" [expandedRowKeys]="expandedRows"
 >
   <ng-template pTemplate="caption">
     <div class="caption">
@@ -16,21 +14,25 @@
 
   <ng-template pTemplate="header">
     <tr> <!-- header -->
-      <th style="width: 40px;"></th>
-      <th style="width: 150px;"></th>
-      <th *ngIf="isAdminView()" style="width: 20%;" pResizableColumn i18n>Reporter</th>
-      <th i18n>Video/Comment/Account</th>
-      <th style="width: 150px;" i18n pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
-      <th i18n pSortableColumn="state" style="width: 80px;">State <p-sortIcon field="state"></p-sortIcon></th>
-      <th i18n style="width: 80px;">Messages</th>
-      <th i18n *ngIf="isAdminView()" style="width: 100px;">Internal note</th>
+      <th scope="col" style="width: 40px;">
+        <span i18n class="visually-hidden">More information</span>
+      </th>
+      <th scope="col" style="width: 150px;">
+        <span i18n class="visually-hidden">Actions</span>
+      </th>
+      <th scope="col" *ngIf="isAdminView()" style="width: 20%;" pResizableColumn i18n>Reporter</th>
+      <th scope="col" i18n>Video/Comment/Account</th>
+      <th scope="col" style="width: 150px;" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+      <th scope="col" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="state" style="width: 80px;">State <p-sortIcon field="state"></p-sortIcon></th>
+      <th scope="col" i18n style="width: 80px;">Messages</th>
+      <th scope="col" i18n *ngIf="isAdminView()" style="width: 100px;">Internal note</th>
     </tr>
   </ng-template>
 
   <ng-template pTemplate="body" let-expanded="expanded" let-abuse>
     <tr>
-      <td class="expand-cell" [pRowToggler]="abuse">
-        <my-table-expander-icon [expanded]="expanded"></my-table-expander-icon>
+      <td class="expand-cell">
+        <my-table-expander-icon [pRowToggler]="abuse" [expanded]="expanded"></my-table-expander-icon>
       </td>
 
       <td class="action-cell">
@@ -80,9 +82,11 @@
             <div class="table-video-text">
               <div>
                 {{ abuse.video.name }}
-                <my-global-icon iconName="delete"></my-global-icon>
+
+                <span i18n class="fst-italic">(Deleted video)</span>
               </div>
-              <div i18n>by {{ abuse.video.channel?.displayName }} on {{ abuse.video.channel?.host }} </div>
+
+              <div class="video-owner" i18n>by {{ abuse.video.channel?.displayName }} on {{ abuse.video.channel?.host }} </div>
             </div>
           </div>
         </td>
@@ -90,7 +94,8 @@
 
       <ng-container *ngIf="abuse.comment">
         <td>
-          <a [href]="getCommentUrl(abuse)" [innerHTML]="abuse.truncatedCommentHtml" class="table-comment-link"
+          <a
+            [href]="getCommentUrl(abuse)" [innerHTML]="abuse.commentHTML" class="table-comment-link ellipsis-multiline-1"
             [title]="abuse.comment.video.name" target="_blank" rel="noopener noreferrer"
           ></a>
 

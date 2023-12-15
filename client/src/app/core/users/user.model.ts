@@ -1,17 +1,18 @@
 import { Account } from '@app/shared/shared-main/account/account.model'
-import { objectKeysTyped } from '@shared/core-utils'
-import { hasUserRight } from '@shared/core-utils/users'
+import { hasUserRight, objectKeysTyped } from '@peertube/peertube-core-utils'
 import {
   ActorImage,
   HTMLServerConfig,
   NSFWPolicyType,
   User as UserServerModel,
   UserAdminFlag,
+  UserAdminFlagType,
   UserNotificationSetting,
-  UserRight,
+  UserRightType,
   UserRole,
+  UserRoleType,
   VideoChannel
-} from '@shared/models'
+} from '@peertube/peertube-models'
 
 export class User implements UserServerModel {
   id: number
@@ -23,21 +24,19 @@ export class User implements UserServerModel {
   emailPublic: boolean
   nsfwPolicy: NSFWPolicyType
 
-  adminFlags?: UserAdminFlag
+  adminFlags?: UserAdminFlagType
 
   autoPlayVideo: boolean
   autoPlayNextVideo: boolean
   autoPlayNextVideoPlaylist: boolean
 
   p2pEnabled: boolean
-  // FIXME: deprecated in 4.1
-  webTorrentEnabled: never
 
   videosHistoryEnabled: boolean
   videoLanguages: string[]
 
   role: {
-    id: UserRole
+    id: UserRoleType
     label: string
   }
 
@@ -126,13 +125,12 @@ export class User implements UserServerModel {
     }
   }
 
-  hasRight (right: UserRight) {
+  hasRight (right: UserRightType) {
     return hasUserRight(this.role.id, right)
   }
 
   patch (obj: UserServerModel) {
     for (const key of objectKeysTyped(obj)) {
-      // FIXME: typings
       (this as any)[key] = obj[key]
     }
 

@@ -1,7 +1,7 @@
-# 
+#
 # This file will be read by node-config
 # See https://github.com/node-config/node-config/wiki/Environment-Variables#custom-environment-variables
-# 
+#
 
 webserver:
   hostname: "PEERTUBE_WEBSERVER_HOSTNAME"
@@ -10,6 +10,11 @@ webserver:
     __format: "json"
   https:
     __name: "PEERTUBE_WEBSERVER_HTTPS"
+    __format: "json"
+
+federation:
+  sign_federated_fetches:
+    __name: "PEERTUBE_SIGN_FEDERATED_FETCHES"
     __format: "json"
 
 secrets:
@@ -86,10 +91,10 @@ object_storage:
     base_url: "PEERTUBE_OBJECT_STORAGE_STREAMING_PLAYLISTS_BASE_URL"
     upload_acl: "PEERTUBE_OBJECT_STORAGE_UPLOAD_ACL"
 
-  videos:
-    bucket_name: "PEERTUBE_OBJECT_STORAGE_VIDEOS_BUCKET_NAME"
-    prefix: "PEERTUBE_OBJECT_STORAGE_VIDEOS_PREFIX"
-    base_url: "PEERTUBE_OBJECT_STORAGE_VIDEOS_BASE_URL"
+  web_videos:
+    bucket_name: "PEERTUBE_OBJECT_STORAGE_WEB_VIDEOS_BUCKET_NAME"
+    prefix: "PEERTUBE_OBJECT_STORAGE_WEB_VIDEOS_PREFIX"
+    base_url: "PEERTUBE_OBJECT_STORAGE_WEB_VIDEOS_BASE_URL"
 
 webadmin:
   configuration:
@@ -177,9 +182,9 @@ transcoding:
     2160p:
       __name: "PEERTUBE_TRANSCODING_2160P"
       __format: "json"
-  webtorrent:
+  web_videos:
     enabled:
-      __name: "PEERTUBE_TRANSCODING_WEBTORRENT_ENABLED"
+      __name: "PEERTUBE_TRANSCODING_WEB_VIDEOS_ENABLED"
       __format: "json"
   hls:
     enabled:

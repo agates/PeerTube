@@ -1,4 +1,4 @@
-import { ChartConfiguration, ChartData, PluginOptionsByType, Scale, TooltipItem } from 'chart.js'
+import { ChartConfiguration, ChartData, ChartOptions, PluginOptionsByType, Scale, TooltipItem } from 'chart.js'
 import zoomPlugin from 'chartjs-plugin-zoom'
 import { Observable, of } from 'rxjs'
 import { SelectOptionsItem } from 'src/types'
@@ -7,15 +7,15 @@ import { ActivatedRoute } from '@angular/router'
 import { Notifier, PeerTubeRouterService } from '@app/core'
 import { NumberFormatterPipe, VideoDetails } from '@app/shared/shared-main'
 import { LiveVideoService } from '@app/shared/shared-video-live'
-import { secondsToTime } from '@shared/core-utils'
-import { HttpStatusCode } from '@shared/models/http'
+import { secondsToTime } from '@peertube/peertube-core-utils'
 import {
+  HttpStatusCode,
   LiveVideoSession,
   VideoStatsOverall,
   VideoStatsRetention,
   VideoStatsTimeserie,
   VideoStatsTimeserieMetric
-} from '@shared/models/videos'
+} from '@peertube/peertube-models'
 import { VideoStatsService } from './video-stats.service'
 
 type ActiveGraphId = VideoStatsTimeserieMetric | 'retention' | 'countries'
@@ -25,6 +25,9 @@ type CountryData = { name: string, viewers: number }[]
 type ChartIngestData = VideoStatsTimeserie | VideoStatsRetention | CountryData
 type ChartBuilderResult = {
   type: 'line' | 'bar'
+
+  options?: ChartOptions<'bar'>
+
   plugins: Partial<PluginOptionsByType<'line' | 'bar'>>
   data: ChartData<'line' | 'bar'>
   displayLegend: boolean
@@ -135,6 +138,12 @@ export class VideoStatsComponent implements OnInit {
 
   onChartChange (newActive: ActiveGraphId) {
     this.activeGraphId = newActive
+
+    if (newActive === 'countries') {
+      this.chartHeight = `${Math.max(this.countries.length * 20, 300)}px`
+    } else {
+      this.chartHeight = '300px'
+    }
 
     this.loadChart()
   }
@@ -333,7 +342,7 @@ export class VideoStatsComponent implements OnInit {
       countries: (rawData: CountryData) => this.buildCountryChartOptions(rawData)
     }
 
-    const { type, data, displayLegend, plugins } = dataBuilders[graphId](this.chartIngestData[graphId])
+    const { type, data, displayLegend, plugins, options } = dataBuilders[graphId](this.chartIngestData[graphId])
 
     const self = this
 
@@ -342,6 +351,8 @@ export class VideoStatsComponent implements OnInit {
       data,
 
       options: {
+        ...options,
+
         responsive: true,
 
         scales: {
@@ -366,7 +377,9 @@ export class VideoStatsComponent implements OnInit {
               : undefined,
 
             ticks: {
-              callback: value => this.formatYTick({ graphId, value })
+              callback: function (value) {
+                return self.formatYTick({ graphId, value, scale: this })
+              }
             }
           }
         },
@@ -449,7 +462,9 @@ export class VideoStatsComponent implements OnInit {
               const { min, max } = chart.scales.x
 
               const startDate = rawData.data[min].date
-              const endDate = this.buildZoomEndDate(rawData.groupInterval, rawData.data[max].date)
+              const endDate = max === rawData.data.length - 1
+                ? (this.statsEndDate || new Date()).toISOString()
+                : rawData.data[max + 1].date
 
               this.peertubeRouter.silentNavigate([], { startDate, endDate })
               this.addAndSelectCustomDateFilter()
@@ -486,6 +501,10 @@ export class VideoStatsComponent implements OnInit {
 
     return {
       type: 'bar' as 'bar',
+
+      options: {
+        indexAxis: 'y'
+      },
 
       displayLegend: true,
 
@@ -527,7 +546,7 @@ export class VideoStatsComponent implements OnInit {
 
     const date = new Date(label)
 
-    if (data.groupInterval.match(/ month?$/)) {
+    if (data.groupInterval.match(/ months?$/)) {
       return date.toLocaleDateString([], { year: '2-digit', month: 'numeric' })
     }
 
@@ -545,11 +564,13 @@ export class VideoStatsComponent implements OnInit {
   private formatYTick (options: {
     graphId: ActiveGraphId
     value: number | string
+    scale?: Scale
   }) {
-    const { graphId, value } = options
+    const { graphId, value, scale } = options
 
     if (graphId === 'retention') return value + ' %'
     if (graphId === 'aggregateWatchTime') return secondsToTime(+value)
+    if (graphId === 'countries' && scale) return scale.getLabelForValue(value as number)
 
     return value.toLocaleString(this.localeId)
   }
@@ -604,20 +625,5 @@ export class VideoStatsComponent implements OnInit {
       minute: 'numeric',
       second: 'numeric'
     })
-  }
-
-  private buildZoomEndDate (groupInterval: string, last: string) {
-    const date = new Date(last)
-
-    // Remove parts of the date we don't need
-    if (groupInterval.endsWith(' day') || groupInterval.endsWith(' days')) {
-      date.setHours(23, 59, 59)
-    } else if (groupInterval.endsWith(' hour') || groupInterval.endsWith(' hours')) {
-      date.setMinutes(59, 59)
-    } else {
-      date.setSeconds(59)
-    }
-
-    return date.toISOString()
   }
 }

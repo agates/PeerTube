@@ -13,8 +13,7 @@
   *ngIf="syncEnabled()" [value]="channelSyncs" [lazy]="true"
   [paginator]="totalRecords > 0" [totalRecords]="totalRecords" [rows]="rowsPerPage" [rowsPerPageOptions]="rowsPerPageOptions"
   [first]="pagination.start" [sortField]="sort.field" [sortOrder]="sort.order" (onLazyLoad)="loadLazy($event)" dataKey="id"
-  [showCurrentPageReport]="true" i18n-currentPageReportTemplate
-  currentPageReportTemplate="Showing {{'{first}'}} to {{'{last}'}} of {{'{totalRecords}'}} synchronizations"
+  [showCurrentPageReport]="true" [currentPageReportTemplate]="getPaginationTemplate()"
   [expandedRowKeys]="expandedRows"
 >
   <ng-template pTemplate="caption">
@@ -30,12 +29,14 @@
 
   <ng-template pTemplate="header">
     <tr>
-      <th style="width: 10%"></th>
-      <th style="width: 25%" i18n pSortableColumn="externalChannelUrl">External Channel <p-sortIcon field="externalChannelUrl"></p-sortIcon></th>
-      <th style="width: 25%" i18n pSortableColumn="videoChannel">Channel <p-sortIcon field="videoChannel"></p-sortIcon></th>
-      <th style="width: 10%" i18n pSortableColumn="state">State <p-sortIcon field="state"></p-sortIcon></th>
-      <th style="width: 10%" i18n pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
-      <th style="width: 10%" i18n pSortableColumn="lastSyncAt">Last synchronization at <p-sortIcon field="lastSyncAt"></p-sortIcon></th>
+      <th scope="col" style="width: 10%;">
+        <span i18n class="visually-hidden">Actions</span>
+      </th>
+      <th scope="col" style="width: 25%" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="externalChannelUrl">External Channel <p-sortIcon field="externalChannelUrl"></p-sortIcon></th>
+      <th scope="col" style="width: 25%" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="videoChannel">Channel <p-sortIcon field="videoChannel"></p-sortIcon></th>
+      <th scope="col" style="width: 10%" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="state">State <p-sortIcon field="state"></p-sortIcon></th>
+      <th scope="col" style="width: 10%" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="createdAt">Created <p-sortIcon field="createdAt"></p-sortIcon></th>
+      <th scope="col" style="width: 10%" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="lastSyncAt">Last synchronization at <p-sortIcon field="lastSyncAt"></p-sortIcon></th>
     </tr>
   </ng-template>
 

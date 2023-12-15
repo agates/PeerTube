@@ -1,56 +1,6 @@
 # Plugins & Themes
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-
-- [Concepts](#concepts)
-  - [Hooks](#hooks)
-  - [Static files](#static-files)
-  - [CSS](#css)
-  - [Server API (only for plugins)](#server-api-only-for-plugins)
-    - [Settings](#settings)
-    - [Storage](#storage)
-    - [Update video constants](#update-video-constants)
-    - [Add custom routes](#add-custom-routes)
-    - [Add custom WebSocket handlers](#add-custom-websocket-handlers)
-    - [Add external auth methods](#add-external-auth-methods)
-    - [Add new transcoding profiles](#add-new-transcoding-profiles)
-    - [Server helpers](#server-helpers)
-    - [Federation](#federation)
-  - [Client API (themes & plugins)](#client-api-themes--plugins)
-    - [Get plugin static and router routes](#get-plugin-static-and-router-routes)
-    - [Notifier](#notifier)
-    - [Markdown Renderer](#markdown-renderer)
-    - [Auth header](#auth-header)
-    - [Custom Modal](#custom-modal)
-    - [Translate](#translate)
-    - [Get public settings](#get-public-settings)
-    - [Get server config](#get-server-config)
-    - [Add custom fields to video form](#add-custom-fields-to-video-form)
-    - [Register settings script](#register-settings-script)
-    - [Plugin selector on HTML elements](#plugin-selector-on-html-elements)
-    - [HTML placeholder elements](#html-placeholder-elements)
-    - [Add/remove left menu links](#addremove-left-menu-links)
-    - [Create client page](#create-client-page)
-  - [Publishing](#publishing)
-- [Write a plugin/theme](#write-a-plugintheme)
-  - [Clone the quickstart repository](#clone-the-quickstart-repository)
-  - [Configure your repository](#configure-your-repository)
-  - [Update README](#update-readme)
-  - [Update package.json](#update-packagejson)
-  - [Write code](#write-code)
-  - [Add translations](#add-translations)
-  - [Build your plugin](#build-your-plugin)
-  - [Test your plugin/theme](#test-your-plugintheme)
-  - [Publish](#publish)
-  - [Unpublish](#unpublish)
-- [Plugin & Theme hooks/helpers API](#plugin--theme-hookshelpers-api)
-- [Tips](#tips)
-  - [Compatibility with PeerTube](#compatibility-with-peertube)
-  - [Spam/moderation plugin](#spammoderation-plugin)
-  - [Other plugin examples](#other-plugin-examples)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+[[toc]]
 
 ## Concepts
 
@@ -167,7 +117,7 @@ or `/themes/{theme-name}/{theme-version}/static/` routes.
 Plugins can declare CSS files that PeerTube will automatically inject in the client.
 If you need to override existing style, you can use the `#custom-css` selector:
 
-```
+```css
 body#custom-css {
   color: red;
 }
@@ -437,7 +387,7 @@ function register (...) {
       displayName: 'User display name',
 
       // Custom admin flags (bypass video auto moderation etc.)
-      // https://github.com/Chocobozzz/PeerTube/blob/develop/shared/models/users/user-flag.model.ts
+      // https://github.com/Chocobozzz/PeerTube/blob/develop/packages/models/src/users/user-flag.model.ts
       // PeerTube >= 5.1
       adminFlags: 0,
       // Quota in bytes
@@ -920,6 +870,7 @@ function register ({ registerClientRoute }) {
 }
 ```
 
+You can then access the page on `/p/my-super/route` (please note the additional `/p/` in the path).
 
 ### Publishing
 
@@ -946,13 +897,13 @@ Steps:
 
 If you develop a plugin, clone the `peertube-plugin-quickstart` repository:
 
-```
+```sh
 git clone https://framagit.org/framasoft/peertube/peertube-plugin-quickstart.git peertube-plugin-mysupername
 ```
 
 If you develop a theme, clone the `peertube-theme-quickstart` repository:
 
-```
+```sh
 git clone https://framagit.org/framasoft/peertube/peertube-theme-quickstart.git peertube-theme-mysupername
 ```
 
@@ -960,7 +911,7 @@ git clone https://framagit.org/framasoft/peertube/peertube-theme-quickstart.git 
 
 Set your repository URL:
 
-```
+```sh
 cd peertube-plugin-mysupername # or cd peertube-theme-mysupername
 git remote set-url origin https://your-git-repo
 ```
@@ -969,7 +920,7 @@ git remote set-url origin https://your-git-repo
 
 Update `README.md` file:
 
-```
+```sh
 $EDITOR README.md
 ```
 
@@ -1027,7 +978,7 @@ npm install --save-dev @peertube/peertube-types
 
 This package exposes *server* definition files by default:
 ```ts
-import { RegisterServerOptions } from '@peertube/peertube-types'
+import { RegisterServerOptions } from '@peertube/peertube-types.js'
 
 export async function register ({ registerHook }: RegisterServerOptions) {
   registerHook({
@@ -1039,8 +990,8 @@ export async function register ({ registerHook }: RegisterServerOptions) {
 
 But it also exposes client types and various models used in __PeerTube__:
 ```ts
-import { Video } from '@peertube/peertube-types';
-import { RegisterClientOptions } from '@peertube/peertube-types/client';
+import { Video } from '@peertube/peertube-types.js';
+import { RegisterClientOptions } from '@peertube/peertube-types/client.js';
 
 function register({ registerHook, peertubeHelpers }: RegisterClientOptions) {
   registerHook({
@@ -1082,7 +1033,7 @@ If you want to translate strings of your plugin (like labels of your registered 
 }
 ```
 
-The key should be one of the locales defined in [i18n.ts](https://github.com/Chocobozzz/PeerTube/blob/develop/shared/models/i18n/i18n.ts).
+The key should be one of the locales defined in [i18n.ts](https://github.com/Chocobozzz/PeerTube/blob/develop/packages/core-utils/src/i18n/i18n.ts).
 
 Translation files are just objects, with the english sentence as the key and the translation as the value.
 `fr.json` could contain for example:
@@ -1099,19 +1050,19 @@ If you added client scripts, you'll need to build them using webpack.
 
 Install webpack:
 
-```
+```sh
 npm install
 ```
 
 Add/update your files in the `clientFiles` array of `webpack.config.js`:
 
-```
+```sh
 $EDITOR ./webpack.config.js
 ```
 
 Build your client files:
 
-```
+```sh
 npm run build
 ```
 
@@ -1120,47 +1071,34 @@ You built files are in the `dist/` directory. Check `package.json` to correctly 
 
 ### Test your plugin/theme
 
-PeerTube dev server (ran with `npm run dev` on `localhost:3000`) can't inject plugin CSS.
-It's the reason why we don't use the dev mode but build PeerTube instead.
+You need to have a local PeerTube instance with an administrator account.
+If you're using dev server on your local computer, test your plugin on `localhost:9000` using `npm run dev` because plugin CSS is not injected in Angular webserver (`localhost:3000`).
 
-You'll need to have a local PeerTube instance:
- * Follow the [dev prerequisites](https://github.com/Chocobozzz/PeerTube/blob/develop/.github/CONTRIBUTING.md#prerequisites)
- (to clone the repository, install dependencies and prepare the database)
- * Build PeerTube:
+Install PeerTube CLI (can be installed on another computer/server than the PeerTube instance):
 
-```
-npm run build
+```bash
+npm install -g @peertube/peertube-cli
 ```
 
- * Build the CLI:
+Register the PeerTube instance via the CLI:
 
-```
-npm run setup:cli
-```
-
- * Run PeerTube (you can access to your instance on `localhost:9000`):
-
-```
-NODE_ENV=dev npm start
+```sh
+peertube-cli auth add -u 'https://peertube.example.com' -U 'root' --password 'test'
 ```
 
- * Register the instance via the CLI:
+Then, you can install your local plugin/theme.
+The `--path` option is the local path on the PeerTube instance.
+If the PeerTube instance is running on another server/computer, you must copy your plugin directory there.
 
-```
-node ./dist/server/tools/peertube.js auth add -u 'http://localhost:9000' -U 'root' --password 'test'
-```
-
-Then, you can install or reinstall your local plugin/theme by running:
-
-```
-node ./dist/server/tools/peertube.js plugins install --path /your/absolute/plugin-or-theme/path
+```sh
+peertube-cli plugins install --path /your/absolute/plugin-or-theme/path
 ```
 
 ### Publish
 
 Go in your plugin/theme directory, and run:
 
-```
+```sh
 npm publish
 ```
 

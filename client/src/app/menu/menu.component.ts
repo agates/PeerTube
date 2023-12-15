@@ -1,4 +1,3 @@
-import { HotkeysService } from 'angular2-hotkeys'
 import * as debug from 'debug'
 import { forkJoin, Subscription } from 'rxjs'
 import { first, switchMap } from 'rxjs/operators'
@@ -10,6 +9,7 @@ import {
   AuthStatus,
   AuthUser,
   HooksService,
+  HotkeysService,
   MenuSection,
   MenuService,
   RedirectService,
@@ -22,7 +22,7 @@ import { LanguageChooserComponent } from '@app/menu/language-chooser.component'
 import { QuickSettingsModalComponent } from '@app/modal/quick-settings-modal.component'
 import { PeertubeModalService } from '@app/shared/shared-main/peertube-modal/peertube-modal.service'
 import { NgbDropdown } from '@ng-bootstrap/ng-bootstrap'
-import { HTMLServerConfig, ServerConfig, UserRight, VideoConstant } from '@shared/models'
+import { HTMLServerConfig, ServerConfig, UserRight, UserRightType, VideoConstant } from '@peertube/peertube-models'
 
 const debugLogger = debug('peertube:menu:MenuComponent')
 
@@ -54,7 +54,7 @@ export class MenuComponent implements OnInit, OnDestroy {
   private htmlServerConfig: HTMLServerConfig
   private serverConfig: ServerConfig
 
-  private routesPerRight: { [role in UserRight]?: string } = {
+  private routesPerRight: { [role in UserRightType]?: string } = {
     [UserRight.MANAGE_USERS]: '/admin/users',
     [UserRight.MANAGE_SERVER_FOLLOW]: '/admin/friends',
     [UserRight.MANAGE_ABUSES]: '/admin/moderation/abuses',
@@ -229,7 +229,7 @@ export class MenuComponent implements OnInit, OnDestroy {
 
   // Lock menu scroll when menu scroll to avoid fleeing / detached dropdown
   onMenuScrollEvent () {
-    document.querySelector('menu').scrollTo(0, 0)
+    document.querySelector('nav').scrollTo(0, 0)
   }
 
   onDropdownOpenChange (opened: boolean) {
@@ -243,10 +243,10 @@ export class MenuComponent implements OnInit, OnDestroy {
 
     if (opened) {
       window.addEventListener('scroll', onWindowScroll)
-      document.querySelector('menu').scrollTo(0, 0) // Reset menu scroll to easy lock
-      document.querySelector('menu').addEventListener('scroll', this.onMenuScrollEvent)
+      document.querySelector('nav').scrollTo(0, 0) // Reset menu scroll to easy lock
+      document.querySelector('nav').addEventListener('scroll', this.onMenuScrollEvent)
     } else {
-      document.querySelector('menu').removeEventListener('scroll', this.onMenuScrollEvent)
+      document.querySelector('nav').removeEventListener('scroll', this.onMenuScrollEvent)
     }
   }
 

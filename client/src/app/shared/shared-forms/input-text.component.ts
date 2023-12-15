@@ -1,6 +1,6 @@
-import { Component, ElementRef, forwardRef, Input, ViewChild } from '@angular/core'
+import { AfterViewInit, Component, ElementRef, forwardRef, Input, ViewChild } from '@angular/core'
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms'
-import { Notifier } from '@app/core'
+import { FormReactiveErrors } from './form-reactive.service'
 
 @Component({
   selector: 'my-input-text',
@@ -14,7 +14,7 @@ import { Notifier } from '@app/core'
     }
   ]
 })
-export class InputTextComponent implements ControlValueAccessor {
+export class InputTextComponent implements ControlValueAccessor, AfterViewInit {
   @ViewChild('input') inputElement: ElementRef
 
   @Input() inputId = Math.random().toString(11).slice(2, 8) // id cannot be left empty or undefined
@@ -26,9 +26,8 @@ export class InputTextComponent implements ControlValueAccessor {
   @Input() withCopy = false
   @Input() readonly = false
   @Input() show = false
-  @Input() formError: string
-
-  constructor (private notifier: Notifier) { }
+  @Input() formError: string | FormReactiveErrors | FormReactiveErrors[]
+  @Input() autofocus = false
 
   get inputType () {
     return this.show
@@ -42,12 +41,14 @@ export class InputTextComponent implements ControlValueAccessor {
       : $localize`Show`
   }
 
-  toggle () {
-    this.show = !this.show
+  ngAfterViewInit () {
+    if (this.autofocus !== true) return
+
+    this.inputElement.nativeElement.focus({ preventScroll: true })
   }
 
-  activateCopiedMessage () {
-    this.notifier.success($localize`Copied`)
+  toggle () {
+    this.show = !this.show
   }
 
   propagateChange = (_: any) => { /* empty */ }

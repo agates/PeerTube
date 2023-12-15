@@ -1,13 +1,13 @@
 import videojs from 'video.js'
 import { logger } from '@root-helpers/logger'
-import { secondsToTime } from '@shared/core-utils'
+import { secondsToTime } from '@peertube/peertube-core-utils'
 import { PlayerNetworkInfo as EventPlayerNetworkInfo } from '../../types'
 import { bytes } from '../common'
 
 interface StatsCardOptions extends videojs.ComponentOptions {
   videoUUID: string
   videoIsLive: boolean
-  mode: 'webtorrent' | 'p2p-media-loader'
+  mode: 'web-video' | 'p2p-media-loader'
   p2pEnabled: boolean
 }
 
@@ -34,7 +34,7 @@ class StatsCard extends Component {
 
   updateInterval: any
 
-  mode: 'webtorrent' | 'p2p-media-loader'
+  mode: 'web-video' | 'p2p-media-loader'
 
   metadataStore: any = {}
 
@@ -63,6 +63,8 @@ class StatsCard extends Component {
 
   private liveLatency: InfoElement
 
+  private onNetworkInfoHandler: (_event: any, data: EventPlayerNetworkInfo) => void
+
   createEl () {
     this.containerEl = videojs.dom.createEl('div', {
       className: 'vjs-stats-content'
@@ -86,28 +88,36 @@ class StatsCard extends Component {
 
     this.populateInfoBlocks()
 
-    this.player_.on('p2pInfo', (event: any, data: EventPlayerNetworkInfo) => {
-      if (!data) return // HTTP fallback
-
+    this.onNetworkInfoHandler = (_event, data) => {
       this.mode = data.source
 
       const p2pStats = data.p2p
       const httpStats = data.http
 
-      this.playerNetworkInfo.downloadSpeed = bytes(p2pStats.downloadSpeed + httpStats.downloadSpeed).join(' ')
-      this.playerNetworkInfo.uploadSpeed = bytes(p2pStats.uploadSpeed).join(' ')
-      this.playerNetworkInfo.totalDownloaded = bytes(p2pStats.downloaded + httpStats.downloaded).join(' ')
-      this.playerNetworkInfo.totalUploaded = bytes(p2pStats.uploaded).join(' ')
-      this.playerNetworkInfo.numPeers = p2pStats.numPeers
-      this.playerNetworkInfo.averageBandwidth = bytes(data.bandwidthEstimate).join(' ') + '/s'
+      this.playerNetworkInfo.downloadSpeed = bytes((p2pStats?.downloadSpeed || 0) + (httpStats.downloadSpeed || 0)).join(' ')
+      this.playerNetworkInfo.uploadSpeed = bytes(p2pStats?.uploadSpeed || 0).join(' ')
+      this.playerNetworkInfo.totalDownloaded = bytes((p2pStats?.downloaded || 0) + httpStats.downloaded).join(' ')
+      this.playerNetworkInfo.totalUploaded = bytes(p2pStats?.uploaded || 0).join(' ')
+      this.playerNetworkInfo.numPeers = p2pStats?.peersWithWebSeed
 
       if (data.source === 'p2p-media-loader') {
+        this.playerNetworkInfo.averageBandwidth = bytes(data.bandwidthEstimate).join(' ') + '/s'
         this.playerNetworkInfo.downloadedFromServer = bytes(httpStats.downloaded).join(' ')
-        this.playerNetworkInfo.downloadedFromPeers = bytes(p2pStats.downloaded).join(' ')
+        this.playerNetworkInfo.downloadedFromPeers = bytes(p2pStats?.downloaded || 0).join(' ')
       }
-    })
+    }
+
+    this.player().on('network-info', this.onNetworkInfoHandler)
 
     return this.containerEl
+  }
+
+  dispose () {
+    if (this.updateInterval) clearInterval(this.updateInterval)
+
+    this.player().off('network-info', this.onNetworkInfoHandler)
+
+    super.dispose()
   }
 
   toggle () {
@@ -122,7 +132,7 @@ class StatsCard extends Component {
       try {
         const options = this.mode === 'p2p-media-loader'
           ? this.buildHLSOptions()
-          : await this.buildWebTorrentOptions() // Default
+          : await this.buildWebVideoOptions() // Default
 
         this.populateInfoValues(options)
       } catch (err) {
@@ -153,9 +163,11 @@ class StatsCard extends Component {
 
     let progress: number
     let latency: string
+    let latencyFromEdge: string
 
     if (this.options_.videoIsLive) {
       latency = secondsToTime(p2pMediaLoader.getLiveLatency())
+      latencyFromEdge = secondsToTime(p2pMediaLoader.getLiveLatencyFromEdge())
     } else {
       progress = this.player().bufferedPercent()
     }
@@ -166,12 +178,13 @@ class StatsCard extends Component {
       codecs,
       buffer,
       latency,
+      latencyFromEdge,
       progress
     }
   }
 
-  private async buildWebTorrentOptions () {
-    const videoFile = this.player_.webtorrent().getCurrentVideoFile()
+  private async buildWebVideoOptions () {
+    const videoFile = this.player_.webVideo().getCurrentVideoFile()
 
     if (!this.metadataStore[videoFile.fileUrl]) {
       this.metadataStore[videoFile.fileUrl] = await fetch(videoFile.metadataUrl).then(res => res.json())
@@ -194,7 +207,7 @@ class StatsCard extends Component {
 
     const resolution = videoFile?.resolution.label + videoFile?.fps
     const buffer = this.timeRangesToString(this.player_.buffered())
-    const progress = this.player_.webtorrent().getTorrent()?.progress
+    const progress = this.player_.bufferedPercent()
 
     return {
       playerNetworkInfo: this.playerNetworkInfo,
@@ -251,9 +264,12 @@ class StatsCard extends Component {
     buffer: string
 
     latency?: string
+    latencyFromEdge?: string
     colorSpace?: string
   }) {
-    const { playerNetworkInfo, progress, colorSpace, codecs, resolution, buffer, latency } = options
+    const { playerNetworkInfo, progress, colorSpace, codecs, resolution, buffer, latency, latencyFromEdge } = options
+    const { downloadedFromServer, downloadedFromPeers } = playerNetworkInfo
+
     const player = this.player()
 
     const videoQuality: VideoPlaybackQuality = player.getVideoPlaybackQuality()
@@ -272,10 +288,14 @@ class StatsCard extends Component {
       ? `${playerNetworkInfo.downloadSpeed} &dArr; / ${playerNetworkInfo.uploadSpeed} &uArr;`
       : undefined
 
-    const totalTransferred = playerNetworkInfo.totalDownloaded
-      ? `${playerNetworkInfo.totalDownloaded} &dArr; / ${playerNetworkInfo.totalUploaded} &uArr;`
-      : undefined
-    const { downloadedFromServer, downloadedFromPeers } = playerNetworkInfo
+    let totalTransferred = playerNetworkInfo.totalDownloaded
+      ? `${playerNetworkInfo.totalDownloaded} &dArr;`
+      : ''
+
+    if (playerNetworkInfo.totalUploaded) {
+      totalTransferred += `/ ${playerNetworkInfo.totalUploaded} &uArr;`
+    }
+
     const downloadBreakdown = playerNetworkInfo.downloadedFromServer
       ? player.localize('{1} from servers · {2} from peers', [ downloadedFromServer, downloadedFromPeers ])
       : undefined
@@ -284,8 +304,10 @@ class StatsCard extends Component {
       ? `${(progress * 100).toFixed(1)}% (${(progress * duration).toFixed(1)}s)`
       : undefined
 
-    this.setInfoValue(this.playerMode, this.mode || 'HTTP')
-    this.setInfoValue(this.p2p, player.localize(this.options_.p2pEnabled ? 'enabled' : 'disabled'))
+    const p2pEnabled = this.options_.p2pEnabled && this.mode === 'p2p-media-loader'
+
+    this.setInfoValue(this.playerMode, this.mode)
+    this.setInfoValue(this.p2p, player.localize(p2pEnabled ? 'enabled' : 'disabled'))
     this.setInfoValue(this.uuid, this.options_.videoUUID)
 
     this.setInfoValue(this.viewport, frames)
@@ -293,16 +315,18 @@ class StatsCard extends Component {
     this.setInfoValue(this.volume, volume)
     this.setInfoValue(this.codecs, codecs)
     this.setInfoValue(this.color, colorSpace)
+    this.setInfoValue(this.transferred, totalTransferred)
     this.setInfoValue(this.connection, playerNetworkInfo.averageBandwidth)
 
     this.setInfoValue(this.network, networkActivity)
-    this.setInfoValue(this.transferred, totalTransferred)
     this.setInfoValue(this.download, downloadBreakdown)
 
     this.setInfoValue(this.bufferProgress, bufferProgress)
     this.setInfoValue(this.bufferState, buffer)
 
-    this.setInfoValue(this.liveLatency, latency)
+    if (latency && latencyFromEdge) {
+      this.setInfoValue(this.liveLatency, player.localize('{1} (from edge: {2})', [ latency, latencyFromEdge ]))
+    }
   }
 
   private setInfoValue (el: InfoElement, value: string) {

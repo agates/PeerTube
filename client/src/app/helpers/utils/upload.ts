@@ -1,18 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http'
 import { Notifier } from '@app/core'
-import { HttpStatusCode } from '@shared/models'
+import { HttpStatusCode } from '@peertube/peertube-models'
 
 function genericUploadErrorHandler (options: {
   err: Pick<HttpErrorResponse, 'message' | 'status' | 'headers'>
   name: string
-  notifier: Notifier
+  notifier?: Notifier
   sticky?: boolean
 }) {
   const { err, name, notifier, sticky = false } = options
   const title = $localize`Upload failed`
   const message = buildMessage(name, err)
 
-  notifier.error(message, title, null, sticky)
+  if (notifier) notifier.error(message, title, null, sticky)
+
   return message
 }
 

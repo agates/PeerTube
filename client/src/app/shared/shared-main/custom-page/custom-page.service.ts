@@ -3,7 +3,7 @@ import { catchError } from 'rxjs/operators'
 import { HttpClient } from '@angular/common/http'
 import { Injectable } from '@angular/core'
 import { RestExtractor } from '@app/core'
-import { CustomPage } from '@shared/models'
+import { CustomPage } from '@peertube/peertube-models'
 import { environment } from '../../../../environments/environment'
 
 @Injectable()
@@ -23,7 +23,7 @@ export class CustomPageService {
                               return of({ content: '' })
                             }
 
-                            this.restExtractor.handleError(err)
+                            return this.restExtractor.handleError(err)
                           })
                         )
   }

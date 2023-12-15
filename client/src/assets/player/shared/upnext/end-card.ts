@@ -1,6 +1,7 @@
 import videojs from 'video.js'
+import { UpNextPluginOptions } from '../../types'
 
-function getMainTemplate (options: any) {
+function getMainTemplate (options: EndCardOptions) {
   return `
     <div class="vjs-upnext-top">
       <span class="vjs-upnext-headtext">${options.headText}</span>
@@ -23,19 +24,14 @@ function getMainTemplate (options: any) {
   `
 }
 
-export interface EndCardOptions extends videojs.ComponentOptions {
-  next: () => void
-  getTitle: () => string
-  timeout: number
+export interface EndCardOptions extends videojs.ComponentOptions, UpNextPluginOptions {
   cancelText: string
   headText: string
   suspendedText: string
-  condition: () => boolean
-  suspended: () => boolean
 }
 
 const Component = videojs.getComponent('Component')
-class EndCard extends Component {
+export class EndCard extends Component {
   options_: EndCardOptions
 
   dashOffsetTotal = 586
@@ -52,27 +48,47 @@ class EndCard extends Component {
   suspendedMessage: HTMLElement
   nextButton: HTMLElement
 
+  private timeout: any
+
+  private onEndedHandler: () => void
+  private onPlayingHandler: () => void
+
   constructor (player: videojs.Player, options: EndCardOptions) {
     super(player, options)
 
     this.totalTicks = this.options_.timeout / this.interval
 
-    player.on('ended', (_: any) => {
-      if (!this.options_.condition()) return
+    this.onEndedHandler = () => {
+      if (!this.options_.isDisplayed()) return
 
       player.addClass('vjs-upnext--showing')
-      this.showCard((canceled: boolean) => {
+
+      this.showCard(canceled => {
         player.removeClass('vjs-upnext--showing')
+
         this.container.style.display = 'none'
+
         if (!canceled) {
           this.options_.next()
         }
       })
-    })
+    }
 
-    player.on('playing', () => {
+    this.onPlayingHandler = () => {
       this.upNextEvents.trigger('playing')
-    })
+    }
+
+    player.on([ 'auto-stopped', 'ended' ], this.onEndedHandler)
+    player.on('playing', this.onPlayingHandler)
+  }
+
+  dispose () {
+    if (this.onEndedHandler) this.player().off([ 'auto-stopped', 'ended' ], this.onEndedHandler)
+    if (this.onPlayingHandler) this.player().off('playing', this.onPlayingHandler)
+
+    if (this.timeout) clearTimeout(this.timeout)
+
+    super.dispose()
   }
 
   createEl () {
@@ -101,26 +117,31 @@ class EndCard extends Component {
     return container
   }
 
-  showCard (cb: (value: boolean) => void) {
-    let timeout: any
-
+  showCard (cb: (canceled: boolean) => void) {
     this.autoplayRing.setAttribute('stroke-dasharray', `${this.dashOffsetStart}`)
     this.autoplayRing.setAttribute('stroke-dashoffset', `${-this.dashOffsetStart}`)
 
     this.title.innerHTML = this.options_.getTitle()
 
+    if (this.totalTicks === 0) {
+      return cb(false)
+    }
+
     this.upNextEvents.one('cancel', () => {
-      clearTimeout(timeout)
+      clearTimeout(this.timeout)
+      this.timeout = undefined
       cb(true)
     })
 
     this.upNextEvents.one('playing', () => {
-      clearTimeout(timeout)
+      clearTimeout(this.timeout)
+      this.timeout = undefined
       cb(true)
     })
 
     this.upNextEvents.one('next', () => {
-      clearTimeout(timeout)
+      clearTimeout(this.timeout)
+      this.timeout = undefined
       cb(false)
     })
 
@@ -134,23 +155,24 @@ class EndCard extends Component {
     }
 
     const update = () => {
-      if (this.options_.suspended()) {
+      if (this.options_.isSuspended()) {
         this.suspendedMessage.innerText = this.options_.suspendedText
         goToPercent(0)
         this.ticks = 0
-        timeout = setTimeout(update.bind(this), 300) // checks once supsended can be a bit longer
+        this.timeout = setTimeout(update.bind(this), 300) // checks once supsended can be a bit longer
       } else if (this.ticks >= this.totalTicks) {
-        clearTimeout(timeout)
+        clearTimeout(this.timeout)
+        this.timeout = undefined
         cb(false)
       } else {
         this.suspendedMessage.innerText = ''
         tick()
-        timeout = setTimeout(update.bind(this), this.interval)
+        this.timeout = setTimeout(update.bind(this), this.interval)
       }
     }
 
     this.container.style.display = 'block'
-    timeout = setTimeout(update.bind(this), this.interval)
+    this.timeout = setTimeout(update.bind(this), this.interval)
   }
 }
 

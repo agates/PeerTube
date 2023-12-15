@@ -1,4 +1,4 @@
-import { HttpStatusCode, OAuth2ErrorCode, UserRefreshToken } from '../../../../../shared/models'
+import { HttpStatusCode, OAuth2ErrorCode, OAuth2ErrorCodeType, UserRefreshToken } from '@peertube/peertube-models'
 import { OAuthUserTokens, objectToUrlEncoded } from '../../../root-helpers'
 import { peertubeLocalStorage } from '../../../root-helpers/peertube-web-storage'
 
@@ -18,10 +18,12 @@ export class AuthHTTP {
     if (this.userOAuthTokens) this.setHeadersFromTokens()
   }
 
-  fetch (url: string, { optionalAuth, method }: { optionalAuth: boolean, method?: string }) {
-    const refreshFetchOptions = optionalAuth
-      ? { headers: this.headers }
-      : {}
+  fetch (url: string, { optionalAuth, method }: { optionalAuth: boolean, method?: string }, videoPassword?: string) {
+    let refreshFetchOptions: { headers?: Headers } = {}
+
+    if (videoPassword) this.headers.set('x-peertube-video-password', videoPassword)
+
+    if (videoPassword || optionalAuth) refreshFetchOptions = { headers: this.headers }
 
     return this.refreshFetch(url.toString(), { ...refreshFetchOptions, method })
   }
@@ -64,7 +66,7 @@ export class AuthHTTP {
             if (res.status === HttpStatusCode.UNAUTHORIZED_401) return undefined
 
             return res.json()
-          }).then((obj: UserRefreshToken & { code?: OAuth2ErrorCode }) => {
+          }).then((obj: UserRefreshToken & { code?: OAuth2ErrorCodeType }) => {
             if (!obj || obj.code === OAuth2ErrorCode.INVALID_GRANT) {
               OAuthUserTokens.flushLocalStorage(peertubeLocalStorage)
               this.removeTokensFromHeaders()

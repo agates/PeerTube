@@ -10,7 +10,7 @@ module.exports = function () {
   const configuration = {
     entry: {
       'video-embed': './src/standalone/videos/embed.ts',
-      'player': './src/standalone/player/player.ts',
+      'player': './src/standalone/embed-player-api/player.ts',
       'test-embed': './src/standalone/videos/test-embed.ts'
     },
 
@@ -29,17 +29,12 @@ module.exports = function () {
       alias: {
         'video.js$': path.resolve('node_modules/video.js/core.js'),
         'hls.js$': path.resolve('node_modules/hls.js/dist/hls.light.js'),
-        '@root-helpers': path.resolve('src/root-helpers'),
-        '@shared/models': path.resolve('../shared/models'),
-        '@shared/core-utils': path.resolve('../shared/core-utils')
+        '@root-helpers': path.resolve('src/root-helpers')
       },
 
       fallback: {
         fs: [ path.resolve('src/shims/noop.ts') ],
-        http: [ path.resolve('src/shims/http.ts') ],
-        https: [ path.resolve('src/shims/https.ts') ],
         path: [ path.resolve('src/shims/path.ts') ],
-        stream: [ path.resolve('src/shims/stream.ts') ],
         crypto: [ path.resolve('src/shims/noop.ts') ]
       }
     },

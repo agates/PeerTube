@@ -16,7 +16,7 @@
             <div class="form-group">
               <label i18n for="name">Title</label>
               <input type="text" id="name" class="form-control" formControlName="name" />
-              <div *ngIf="formErrors.name" class="form-error">
+              <div *ngIf="formErrors.name" class="form-error" role="alert">
                 {{ formErrors.name }}
               </div>
             </div>
@@ -35,7 +35,7 @@
               </my-help>
 
               <my-select-tags labelForId="label-tags" formControlName="tags"></my-select-tags>
-              <div *ngIf="formErrors.tags" class="form-error">
+              <div *ngIf="formErrors.tags" class="form-error" role="alert">
                 {{ formErrors.tags }}
               </div>
             </div>
@@ -55,7 +55,7 @@
 
               <my-markdown-textarea
                 formControlName="description" [markdownVideo]="videoToUpdate"
-                [formError]="formErrors.description" [truncate]="250"
+                [formError]="formErrors.description" [truncateTo3Lines]="true"
               ></my-markdown-textarea>
             </div>
           </div>
@@ -72,7 +72,7 @@
                 labelForId="category" [items]="videoCategories" formControlName="category" [clearable]="true"
               ></my-select-options>
 
-              <div *ngIf="formErrors.category" class="form-error">
+              <div *ngIf="formErrors.category" class="form-error" role="alert">
                 {{ formErrors.category }}
               </div>
             </div>
@@ -92,7 +92,7 @@
                 labelForId="licence" [items]="videoLicences" formControlName="licence" [clearable]="true"
               ></my-select-options>
 
-              <div *ngIf="formErrors.licence" class="form-error">
+              <div *ngIf="formErrors.licence" class="form-error" role="alert">
                 {{ formErrors.licence }}
               </div>
             </div>
@@ -104,7 +104,7 @@
                 [clearable]="true" [searchable]="true" [groupBy]="'group'"
               ></my-select-options>
 
-              <div *ngIf="formErrors.language" class="form-error">
+              <div *ngIf="formErrors.language" class="form-error" role="alert">
                 {{ formErrors.language }}
               </div>
             </div>
@@ -115,12 +115,17 @@
                 labelForId="privacy" [items]="videoPrivacies" formControlName="privacy" [clearable]="false"
               ></my-select-options>
 
-              <div *ngIf="formErrors.privacy" class="form-error">
+              <div *ngIf="formErrors.privacy" class="form-error" role="alert">
                 {{ formErrors.privacy }}
               </div>
             </div>
 
-            <div *ngIf="schedulePublicationEnabled" class="form-group">
+            <div *ngIf="passwordProtectionSelected" class="form-group">
+              <label i18n for="videoPassword">Password</label>
+              <my-input-text formControlName="videoPassword" inputId="videoPassword" [withCopy]="true" [formError]="formErrors['videoPassword']"></my-input-text>
+            </div>
+
+            <div *ngIf="schedulePublicationSelected" class="form-group">
               <label i18n for="schedulePublicationAt">Schedule publication ({{ calendarTimezone }})</label>
               <p-calendar
                 id="schedulePublicationAt" formControlName="schedulePublicationAt" [dateFormat]="calendarDateFormat"
@@ -128,7 +133,7 @@
               >
               </p-calendar>
 
-              <div *ngIf="formErrors.schedulePublicationAt" class="form-error">
+              <div *ngIf="formErrors.schedulePublicationAt" class="form-error" role="alert">
                 {{ formErrors.schedulePublicationAt }}
               </div>
             </div>
@@ -225,6 +230,57 @@
       </ng-template>
     </ng-container>
 
+    <ng-container ngbNavItem *ngIf="!liveVideo">
+      <a ngbNavLink i18n>Chapters</a>
+
+      <ng-template ngbNavContent>
+        <div class="row mb-5">
+          <div class="chapters col-md-12 col-xl-6" formArrayName="chapters">
+            <ng-container *ngFor="let chapterControl of getChaptersFormArray().controls; let i = index">
+              <div class="chapter" [formGroupName]="i">
+                <!-- Row 1 -->
+                <div></div>
+
+                <label i18n [ngClass]="{ 'hide-chapter-label': i !== 0 }" [for]="'timecode[' + i + ']'">Timecode</label>
+
+                <label i18n [ngClass]="{ 'hide-chapter-label': i !== 0 }" [for]="'title[' + i + ']'">Chapter name</label>
+
+                <div></div>
+
+                <!-- Row 2 -->
+                <div class="position">{{ i + 1 }}</div>
+
+                <my-timestamp-input
+                  class="d-block" [disableBorder]="false" [inputName]="'timecode[' + i + ']'"
+                  [maxTimestamp]="videoToUpdate?.duration" formControlName="timecode"
+                ></my-timestamp-input>
+
+                <div>
+                  <input
+                    [ngClass]="{ 'input-error': formErrors.chapters[i].title }"
+                    type="text" [id]="'title[' + i + ']'" [name]="'title[' + i + ']'" formControlName="title"
+                  />
+
+                  <div [ngClass]="{ 'opacity-0': !formErrors.chapters[i].title }" class="form-error" role="alert">
+                    <span class="opacity-0">t</span> <!-- Ensure we have reserve a correct height -->
+                    {{ formErrors.chapters[i].title }}
+                  </div>
+                </div>
+
+                <my-delete-button *ngIf="!isLastChapterControl(i)" (click)="deleteChapterControl(i)"></my-delete-button>
+              </div>
+            </ng-container>
+
+            <div *ngIf="getChapterArrayErrors()" class="form-error" role="alert">
+              {{ getChapterArrayErrors() }}
+            </div>
+          </div>
+
+          <my-embed *ngIf="videoToUpdate" class="col-md-12 col-xl-6" [video]="videoToUpdate"></my-embed>
+        </div>
+      </ng-template>
+    </ng-container>
+
     <ng-container ngbNavItem *ngIf="liveVideo">
       <a ngbNavLink i18n>Live settings</a>
 
@@ -287,7 +343,7 @@
             <div class="form-group mx-4" *ngIf="isSaveReplayEnabled()">
               <label i18n for="replayPrivacy">Privacy of the new replay</label>
               <my-select-options
-                labelForId="replayPrivacy" [items]="videoPrivacies" [clearable]="false" formControlName="replayPrivacy"
+                labelForId="replayPrivacy" [items]="replayPrivacies" [clearable]="false" formControlName="replayPrivacy"
               ></my-select-options>
             </div>
 
@@ -297,7 +353,7 @@
                 labelForId="latencyMode" [items]="latencyModes" formControlName="latencyMode" [clearable]="true"
               ></my-select-options>
 
-              <div *ngIf="formErrors.latencyMode" class="form-error">
+              <div *ngIf="formErrors.latencyMode" class="form-error" role="alert">
                 {{ formErrors.latencyMode }}
               </div>
             </div>
@@ -307,13 +363,14 @@
 
     </ng-container>
 
-
     <ng-container ngbNavItem>
       <a ngbNavLink i18n>Advanced settings</a>
 
       <ng-template ngbNavContent>
         <div class="row advanced-settings">
           <div class="col-md-12 col-xl-8">
+
+            <ng-content></ng-content>
 
             <div class="form-group">
               <label i18n for="previewfile">Video thumbnail</label>
@@ -358,21 +415,25 @@
             </div>
 
             <div class="form-group originally-published-at">
-              <label i18n for="originallyPublishedAt">Original publication date</label>
-              <my-help>
-                <ng-template ptTemplate="preHtml">
-                  <ng-container i18n>
-                    This is the date when the content was originally published (e.g. the release date for a film)
-                  </ng-container>
-                </ng-template>
-              </my-help>
+              <div class="label-container">
+                <label i18n for="originallyPublishedAt">Original publication date</label>
+
+                <button i18n class="reset-button reset-button-small" (click)="resetField('originallyPublishedAt')" *ngIf="hasPublicationDate()">
+                  Reset
+                </button>
+              </div>
+
+              <div class="form-group-description" i18n>
+                This is the date when the content was originally published (e.g. the release date for a film)
+              </div>
+
               <p-calendar
                 id="originallyPublishedAt" formControlName="originallyPublishedAt" [dateFormat]="calendarDateFormat" [firstDayOfWeek]="0"
                 [showTime]="true" [hideOnDateTimeSelect]="true" [monthNavigator]="true" [yearNavigator]="true" [yearRange]="myYearRange"
               >
               </p-calendar>
 
-              <div *ngIf="formErrors.originallyPublishedAt" class="form-error">
+              <div *ngIf="formErrors.originallyPublishedAt" class="form-error" role="alert">
                 {{ formErrors.originallyPublishedAt }}
               </div>
             </div>

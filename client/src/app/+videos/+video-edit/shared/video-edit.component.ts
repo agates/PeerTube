@@ -2,10 +2,10 @@ import { forkJoin } from 'rxjs'
 import { map } from 'rxjs/operators'
 import { SelectChannelItem, SelectOptionsItem } from 'src/types/select-options-item.model'
 import { ChangeDetectorRef, Component, EventEmitter, Input, NgZone, OnDestroy, OnInit, Output, ViewChild } from '@angular/core'
-import { AbstractControl, FormArray, FormControl, FormGroup, Validators } from '@angular/forms'
+import { AbstractControl, FormArray, FormGroup, Validators } from '@angular/forms'
 import { HooksService, PluginService, ServerService } from '@app/core'
 import { removeElementFromArray } from '@app/helpers'
-import { BuildFormValidator } from '@app/shared/form-validators'
+import { BuildFormArgument, BuildFormValidator } from '@app/shared/form-validators'
 import {
   VIDEO_CATEGORY_VALIDATOR,
   VIDEO_CHANNEL_VALIDATOR,
@@ -14,28 +14,32 @@ import {
   VIDEO_LICENCE_VALIDATOR,
   VIDEO_NAME_VALIDATOR,
   VIDEO_ORIGINALLY_PUBLISHED_AT_VALIDATOR,
+  VIDEO_PASSWORD_VALIDATOR,
   VIDEO_PRIVACY_VALIDATOR,
   VIDEO_SCHEDULE_PUBLICATION_AT_VALIDATOR,
   VIDEO_SUPPORT_VALIDATOR,
   VIDEO_TAGS_ARRAY_VALIDATOR
 } from '@app/shared/form-validators/video-validators'
-import { FormReactiveValidationMessages, FormValidatorService } from '@app/shared/shared-forms'
+import { VIDEO_CHAPTERS_ARRAY_VALIDATOR, VIDEO_CHAPTER_TITLE_VALIDATOR } from '@app/shared/form-validators/video-chapter-validators'
+import { FormReactiveErrors, FormReactiveValidationMessages, FormValidatorService } from '@app/shared/shared-forms'
 import { InstanceService } from '@app/shared/shared-instance'
-import { VideoCaptionEdit, VideoCaptionWithPathEdit, VideoEdit, VideoService } from '@app/shared/shared-main'
+import { VideoCaptionEdit, VideoCaptionWithPathEdit, VideoChaptersEdit, VideoEdit, VideoService } from '@app/shared/shared-main'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
-import { logger } from '@root-helpers/logger'
-import { PluginInfo } from '@root-helpers/plugins-manager'
 import {
   HTMLServerConfig,
   LiveVideo,
   LiveVideoLatencyMode,
   RegisterClientFormFieldOptions,
   RegisterClientVideoFieldOptions,
+  VideoChapter,
   VideoConstant,
   VideoDetails,
-  VideoPrivacy
-} from '@shared/models'
-import { VideoSource } from '@shared/models/videos/video-source'
+  VideoPrivacy,
+  VideoPrivacyType,
+  VideoSource
+} from '@peertube/peertube-models'
+import { logger } from '@root-helpers/logger'
+import { PluginInfo } from '@root-helpers/plugins-manager'
 import { I18nPrimengCalendarService } from './i18n-primeng-calendar.service'
 import { VideoCaptionAddModalComponent } from './video-caption-add-modal.component'
 import { VideoCaptionEditModalContentComponent } from './video-caption-edit-modal-content/video-caption-edit-modal-content.component'
@@ -55,7 +59,7 @@ type PluginField = {
 })
 export class VideoEditComponent implements OnInit, OnDestroy {
   @Input() form: FormGroup
-  @Input() formErrors: { [ id: string ]: string } = {}
+  @Input() formErrors: FormReactiveErrors & { chapters?: { title: string }[] } = {}
   @Input() validationMessages: FormReactiveValidationMessages = {}
 
   @Input() videoToUpdate: VideoDetails
@@ -66,7 +70,10 @@ export class VideoEditComponent implements OnInit, OnDestroy {
   @Input() videoCaptions: VideoCaptionWithPathEdit[] = []
   @Input() videoSource: VideoSource
 
+  @Input() videoChapters: VideoChapter[] = []
+
   @Input() hideWaitTranscoding = false
+  @Input() updateVideoFileEnabled = false
 
   @Input() type: VideoEditType
   @Input() liveVideo: LiveVideo
@@ -79,7 +86,8 @@ export class VideoEditComponent implements OnInit, OnDestroy {
   // So that it can be accessed in the template
   readonly SPECIAL_SCHEDULED_PRIVACY = VideoEdit.SPECIAL_SCHEDULED_PRIVACY
 
-  videoPrivacies: VideoConstant<VideoPrivacy>[] = []
+  videoPrivacies: VideoConstant<VideoPrivacyType | typeof VideoEdit.SPECIAL_SCHEDULED_PRIVACY > [] = []
+  replayPrivacies: VideoConstant<VideoPrivacyType> [] = []
   videoCategories: VideoConstant<number>[] = []
   videoLicences: VideoConstant<number>[] = []
   videoLanguages: VideoLanguages[] = []
@@ -103,7 +111,8 @@ export class VideoEditComponent implements OnInit, OnDestroy {
 
   pluginDataFormGroup: FormGroup
 
-  schedulePublicationEnabled = false
+  schedulePublicationSelected = false
+  passwordProtectionSelected = false
 
   calendarLocale: any = {}
   minScheduledDate = new Date()
@@ -145,9 +154,10 @@ export class VideoEditComponent implements OnInit, OnDestroy {
       licence: this.serverConfig.defaults.publish.licence,
       tags: []
     }
-    const obj: { [ id: string ]: BuildFormValidator } = {
+    const obj: BuildFormArgument = {
       name: VIDEO_NAME_VALIDATOR,
       privacy: VIDEO_PRIVACY_VALIDATOR,
+      videoPassword: VIDEO_PASSWORD_VALIDATOR,
       channelId: VIDEO_CHANNEL_VALIDATOR,
       nsfw: null,
       commentsEnabled: null,
@@ -177,12 +187,16 @@ export class VideoEditComponent implements OnInit, OnDestroy {
       defaultValues
     )
 
-    this.form.addControl('captions', new FormArray([
-      new FormGroup({
-        language: new FormControl(),
-        captionfile: new FormControl()
-      })
-    ]))
+    this.form.addControl('chapters', new FormArray([], VIDEO_CHAPTERS_ARRAY_VALIDATOR.VALIDATORS))
+    this.addNewChapterControl()
+
+    this.form.get('chapters').valueChanges.subscribe((chapters: { title: string, timecode: string }[]) => {
+      const lastChapter = chapters[chapters.length - 1]
+
+      if (lastChapter.title || lastChapter.timecode) {
+        this.addNewChapterControl()
+      }
+    })
 
     this.trackChannelChange()
     this.trackPrivacyChange()
@@ -222,7 +236,9 @@ export class VideoEditComponent implements OnInit, OnDestroy {
 
     this.serverService.getVideoPrivacies()
       .subscribe(privacies => {
-        this.videoPrivacies = this.videoService.explainedPrivacyLabels(privacies).videoPrivacies
+        const videoPrivacies = this.videoService.explainedPrivacyLabels(privacies).videoPrivacies
+        this.videoPrivacies = videoPrivacies
+        this.replayPrivacies = videoPrivacies.filter((privacy) => privacy.id !== VideoPrivacy.PASSWORD_PROTECTED)
 
         // Can't schedule publication if private privacy is not available (could be deleted by a plugin)
         const hasPrivatePrivacy = this.videoPrivacies.some(p => p.id === VideoPrivacy.PRIVATE)
@@ -255,6 +271,8 @@ export class VideoEditComponent implements OnInit, OnDestroy {
   ngOnDestroy () {
     if (this.schedulerInterval) clearInterval(this.schedulerInterval)
   }
+
+  // ---------------------------------------------------------------------------
 
   getExistingCaptions () {
     return this.videoCaptions
@@ -304,6 +322,8 @@ export class VideoEditComponent implements OnInit, OnDestroy {
     modalRef.componentInstance.captionEdited.subscribe(this.onCaptionEdited.bind(this))
   }
 
+  // ---------------------------------------------------------------------------
+
   isSaveReplayAllowed () {
     return this.serverConfig.live.allowReplay
   }
@@ -319,6 +339,18 @@ export class VideoEditComponent implements OnInit, OnDestroy {
   isLatencyModeEnabled () {
     return this.serverConfig.live.latencySetting.enabled
   }
+
+  hasPublicationDate () {
+    return !!this.form.value['originallyPublishedAt']
+  }
+
+  // ---------------------------------------------------------------------------
+
+  resetField (name: string) {
+    this.form.patchValue({ [name]: null })
+  }
+
+  // ---------------------------------------------------------------------------
 
   isPluginFieldHidden (pluginField: PluginField) {
     if (typeof pluginField.commonOptions.hidden !== 'function') return false
@@ -402,6 +434,70 @@ export class VideoEditComponent implements OnInit, OnDestroy {
     this.form.valueChanges.subscribe(() => this.formValidatorService.updateTreeValidity(this.pluginDataFormGroup))
   }
 
+  // ---------------------------------------------------------------------------
+
+  addNewChapterControl () {
+    const chaptersFormArray = this.getChaptersFormArray()
+    const controls = chaptersFormArray.controls
+
+    if (controls.length !== 0) {
+      const lastControl = chaptersFormArray.controls[controls.length - 1]
+      lastControl.get('title').addValidators(Validators.required)
+    }
+
+    this.formValidatorService.addControlInFormArray({
+      controlName: 'chapters',
+      formArray: chaptersFormArray,
+      formErrors: this.formErrors,
+      validationMessages: this.validationMessages,
+      formToBuild: {
+        timecode: null,
+        title: VIDEO_CHAPTER_TITLE_VALIDATOR
+      },
+      defaultValues: {
+        timecode: 0
+      }
+    })
+  }
+
+  getChaptersFormArray () {
+    return this.form.controls['chapters'] as FormArray
+  }
+
+  deleteChapterControl (index: number) {
+    this.formValidatorService.removeControlFromFormArray({
+      controlName: 'chapters',
+      formArray: this.getChaptersFormArray(),
+      formErrors: this.formErrors,
+      validationMessages: this.validationMessages,
+      index
+    })
+  }
+
+  isLastChapterControl (index: number) {
+    return this.getChaptersFormArray().length - 1 === index
+  }
+
+  patchChapters (chaptersEdit: VideoChaptersEdit) {
+    const totalChapters = chaptersEdit.getChaptersForUpdate().length
+    const totalControls = this.getChaptersFormArray().length
+
+    // Add missing controls. We use <= because we need the "empty control" to add another chapter
+    for (let i = 0; i <= totalChapters - totalControls; i++) {
+      this.addNewChapterControl()
+    }
+
+    this.form.patchValue(chaptersEdit.toFormPatch())
+  }
+
+  getChapterArrayErrors () {
+    if (!this.getChaptersFormArray().errors) return ''
+
+    return Object.values(this.getChaptersFormArray().errors).join('. ')
+  }
+
+  // ---------------------------------------------------------------------------
+
   private trackPrivacyChange () {
     // We will update the schedule input and the wait transcoding checkbox validators
     this.form.controls['privacy']
@@ -410,13 +506,13 @@ export class VideoEditComponent implements OnInit, OnDestroy {
       .subscribe(
         newPrivacyId => {
 
-          this.schedulePublicationEnabled = newPrivacyId === this.SPECIAL_SCHEDULED_PRIVACY
+          this.schedulePublicationSelected = newPrivacyId === this.SPECIAL_SCHEDULED_PRIVACY
 
           // Value changed
           const scheduleControl = this.form.get('schedulePublicationAt')
           const waitTranscodingControl = this.form.get('waitTranscoding')
 
-          if (this.schedulePublicationEnabled) {
+          if (this.schedulePublicationSelected) {
             scheduleControl.setValidators([ Validators.required ])
 
             waitTranscodingControl.disable()
@@ -437,6 +533,16 @@ export class VideoEditComponent implements OnInit, OnDestroy {
 
           this.firstPatchDone = true
 
+          this.passwordProtectionSelected = newPrivacyId === VideoPrivacy.PASSWORD_PROTECTED
+          const videoPasswordControl = this.form.get('videoPassword')
+
+          if (this.passwordProtectionSelected) {
+            videoPasswordControl.setValidators([ Validators.required ])
+          } else {
+            videoPasswordControl.clearValidators()
+          }
+
+          videoPasswordControl.updateValueAndValidity()
         }
       )
   }

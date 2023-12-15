@@ -5,7 +5,7 @@ import { isInViewport } from '@app/helpers'
 import { VideoPlaylist, VideoPlaylistElement, VideoPlaylistService } from '@app/shared/shared-video-playlist'
 import { getBoolOrDefault } from '@root-helpers/local-storage-utils'
 import { peertubeSessionStorage } from '@root-helpers/peertube-web-storage'
-import { VideoPlaylistPrivacy } from '@shared/models'
+import { VideoPlaylistPrivacy } from '@peertube/peertube-models'
 
 @Component({
   selector: 'my-video-watch-playlist',
@@ -152,12 +152,24 @@ export class VideoWatchPlaylistComponent {
     this.onPlaylistVideosNearOfBottom(position)
   }
 
+  // ---------------------------------------------------------------------------
+
   hasPreviousVideo () {
-    return !!this.findPlaylistVideo(this.currentPlaylistPosition - 1, 'previous')
+    return !!this.getPreviousVideo()
   }
 
+  getPreviousVideo () {
+    return this.findPlaylistVideo(this.currentPlaylistPosition - 1, 'previous')
+  }
+
+  // ---------------------------------------------------------------------------
+
   hasNextVideo () {
-    return !!this.findPlaylistVideo(this.currentPlaylistPosition + 1, 'next')
+    return !!this.getNextVideo()
+  }
+
+  getNextVideo () {
+    return this.findPlaylistVideo(this.currentPlaylistPosition + 1, 'next')
   }
 
   navigateToPreviousPlaylistVideo () {

@@ -22,6 +22,8 @@ export abstract class RestTable <T = unknown> {
 
   search: string
 
+  sortTooltip = $localize`Sort by this column`
+
   protected route: ActivatedRoute
   protected router: Router
 
@@ -80,6 +82,10 @@ export abstract class RestTable <T = unknown> {
 
   isInSelectionMode () {
     return this.selectedRows.length !== 0
+  }
+
+  getPaginationTemplate () {
+    return $localize`{first} - {last} of {totalRecords}`
   }
 
   protected abstract reloadDataInternal (): void

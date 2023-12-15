@@ -1,7 +1,7 @@
 import { getAbsoluteAPIUrl } from '@app/helpers'
-import { VideoPrivacy, VideoScheduleUpdate, VideoUpdate } from '@shared/models'
+import { objectKeysTyped } from '@peertube/peertube-core-utils'
+import { VideoPassword, VideoPrivacy, VideoPrivacyType, VideoScheduleUpdate, VideoUpdate } from '@peertube/peertube-models'
 import { VideoDetails } from './video-details.model'
-import { objectKeysTyped } from '@shared/core-utils'
 
 export class VideoEdit implements VideoUpdate {
   static readonly SPECIAL_SCHEDULED_PRIVACY = -1
@@ -17,7 +17,8 @@ export class VideoEdit implements VideoUpdate {
   downloadEnabled: boolean
   waitTranscoding: boolean
   channelId: number
-  privacy: VideoPrivacy
+  privacy: VideoPrivacyType
+  videoPassword?: string
   support: string
   thumbnailfile?: any
   previewfile?: any
@@ -32,7 +33,7 @@ export class VideoEdit implements VideoUpdate {
 
   pluginData?: any
 
-  constructor (video?: VideoDetails) {
+  constructor (video?: VideoDetails, videoPassword?: VideoPassword) {
     if (!video) return
 
     this.id = video.id
@@ -63,11 +64,12 @@ export class VideoEdit implements VideoUpdate {
       : null
 
     this.pluginData = video.pluginData
+
+    if (videoPassword) this.videoPassword = videoPassword.password
   }
 
   patch (values: { [ id: string ]: any }) {
     objectKeysTyped(values).forEach(key => {
-      // FIXME: typings
       (this as any)[key] = values[key]
     })
 
@@ -112,6 +114,7 @@ export class VideoEdit implements VideoUpdate {
       waitTranscoding: this.waitTranscoding,
       channelId: this.channelId,
       privacy: this.privacy,
+      videoPassword: this.videoPassword,
       originallyPublishedAt: this.originallyPublishedAt
     }
 

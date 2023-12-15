@@ -1,8 +1,7 @@
-
 import { SelectOptionsItem } from 'src/types/select-options-item.model'
 import { Component, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core'
 import { FormGroup } from '@angular/forms'
-import { HTMLServerConfig } from '@shared/models'
+import { HTMLServerConfig } from '@peertube/peertube-models'
 import { ConfigService } from '../shared/config.service'
 import { EditConfigurationService, ResolutionOption } from './edit-configuration.service'
 
@@ -90,9 +89,9 @@ export class EditVODTranscodingComponent implements OnInit, OnChanges {
     const transcodingControl = this.form.get('transcoding.enabled')
     const videoStudioControl = this.form.get('videoStudio.enabled')
     const hlsControl = this.form.get('transcoding.hls.enabled')
-    const webtorrentControl = this.form.get('transcoding.webtorrent.enabled')
+    const webVideosControl = this.form.get('transcoding.webVideos.enabled')
 
-    webtorrentControl.valueChanges
+    webVideosControl.valueChanges
                      .subscribe(newValue => {
                        if (newValue === false && !hlsControl.disabled) {
                          hlsControl.disable()
@@ -105,12 +104,12 @@ export class EditVODTranscodingComponent implements OnInit, OnChanges {
 
     hlsControl.valueChanges
               .subscribe(newValue => {
-                if (newValue === false && !webtorrentControl.disabled) {
-                  webtorrentControl.disable()
+                if (newValue === false && !webVideosControl.disabled) {
+                  webVideosControl.disable()
                 }
 
-                if (newValue === true && !webtorrentControl.enabled) {
-                  webtorrentControl.enable()
+                if (newValue === true && !webVideosControl.enabled) {
+                  webVideosControl.enable()
                 }
               })
 
@@ -122,7 +121,7 @@ export class EditVODTranscodingComponent implements OnInit, OnChanges {
               })
 
     transcodingControl.updateValueAndValidity()
-    webtorrentControl.updateValueAndValidity()
+    webVideosControl.updateValueAndValidity()
     videoStudioControl.updateValueAndValidity()
     hlsControl.updateValueAndValidity()
   }

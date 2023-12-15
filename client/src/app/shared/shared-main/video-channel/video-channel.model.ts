@@ -1,5 +1,5 @@
 import { getAbsoluteAPIUrl } from '@app/helpers'
-import { Account as ServerAccount, ActorImage, VideoChannel as ServerVideoChannel, ViewsPerDate } from '@shared/models'
+import { Account as ServerAccount, ActorImage, VideoChannel as ServerVideoChannel, ViewsPerDate } from '@peertube/peertube-models'
 import { Actor } from '../account/actor.model'
 
 export class VideoChannel extends Actor implements ServerVideoChannel {
@@ -11,9 +11,6 @@ export class VideoChannel extends Actor implements ServerVideoChannel {
 
   nameWithHost: string
   nameWithHostForced: string
-
-  // TODO: remove, deprecated in 4.2
-  banner: never
 
   banners: ActorImage[]
 

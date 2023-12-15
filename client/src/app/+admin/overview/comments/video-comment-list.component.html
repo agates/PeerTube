@@ -11,8 +11,7 @@
   [value]="comments" [paginator]="totalRecords > 0" [totalRecords]="totalRecords" [rows]="rowsPerPage" [first]="pagination.start"
   [rowsPerPageOptions]="rowsPerPageOptions" [sortField]="sort.field" [sortOrder]="sort.order" dataKey="id"
   [lazy]="true" (onLazyLoad)="loadLazy($event)" [lazyLoadOnInit]="false" [selectionPageOnly]="true"
-  [showCurrentPageReport]="true" i18n-currentPageReportTemplate
-  currentPageReportTemplate="Showing {{'{first}'}} to {{'{last}'}} of {{'{totalRecords}'}} comments"
+  [showCurrentPageReport]="true" [currentPageReportTemplate]="getPaginationTemplate()"
   [expandedRowKeys]="expandedRows" [(selection)]="selectedRows"
 >
   <ng-template pTemplate="caption">
@@ -35,15 +34,19 @@
 
   <ng-template pTemplate="header">
     <tr>
-      <th style="width: 40px;">
+      <th scope="col" style="width: 40px;">
         <p-tableHeaderCheckbox ariaLabel="Select all rows" i18n-ariaLabel></p-tableHeaderCheckbox>
       </th>
-      <th style="width: 40px;"></th>
-      <th style="width: 150px;"></th>
-      <th style="width: 300px;" i18n>Account</th>
-      <th style="width: 300px;" i18n>Video</th>
-      <th i18n>Comment</th>
-      <th style="width: 150px;" i18n pSortableColumn="createdAt">Date <p-sortIcon field="createdAt"></p-sortIcon></th>
+      <th scope="col" style="width: 40px;">
+        <span i18n class="visually-hidden">More information</span>
+      </th>
+      <th scope="col" style="width: 150px;">
+        <span i18n class="visually-hidden">Actions</span>
+      </th>
+      <th scope="col" style="width: 300px;" i18n>Account</th>
+      <th scope="col" style="width: 300px;" i18n>Video</th>
+      <th scope="col" i18n>Comment</th>
+      <th scope="col" style="width: 150px;" i18n [ngbTooltip]="sortTooltip" container="body" pSortableColumn="createdAt">Date <p-sortIcon field="createdAt"></p-sortIcon></th>
     </tr>
   </ng-template>
 
@@ -54,8 +57,8 @@
         <p-tableCheckbox [value]="videoComment" ariaLabel="Select this row" i18n-ariaLabel></p-tableCheckbox>
       </td>
 
-      <td class="expand-cell" [pRowToggler]="videoComment">
-        <my-table-expander-icon i18n-ngbTooltip ngbTooltip="See full comment" [expanded]="expanded"></my-table-expander-icon>
+      <td class="expand-cell">
+        <my-table-expander-icon [pRowToggler]="videoComment" i18n-tooltip tooltip="See full comment" [expanded]="expanded"></my-table-expander-icon>
       </td>
 
       <td class="action-cell">

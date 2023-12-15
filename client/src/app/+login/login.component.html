@@ -1,7 +1,9 @@
-<h1 i18n class="title-page-v2">
+<h1 class="title-page-v2">
   <strong class="underline-orange">{{ instanceName }}</strong>
+
   >
-  Login
+
+  <ng-container i18n>Login</ng-container>
 </h1>
 
 <div class="margin-content">
@@ -46,10 +48,11 @@
                 <input
                   type="text" id="username" i18n-placeholder placeholder="Example: john@example.com" required tabindex="1"
                   formControlName="username" class="form-control" [ngClass]="{ 'input-error': formErrors['username'] }" myAutofocus
+                  autocomplete="username"
                 >
               </div>
 
-              <div *ngIf="formErrors.username" class="form-error">{{ formErrors.username }}</div>
+              <div *ngIf="formErrors.username" class="form-error" role="alert">{{ formErrors.username }}</div>
 
               <div *ngIf="hasUsernameUppercase()" i18n class="form-warning">
                 ⚠️ Most email addresses do not include capital letters.
@@ -119,7 +122,9 @@
   <div class="modal-header">
     <h4 i18n class="modal-title">Forgot your password</h4>
 
-    <my-global-icon iconName="cross" aria-label="Close" role="button" (click)="hideForgotPasswordModal()"></my-global-icon>
+    <button class="border-0 p-0" title="Close this modal" i18n-title (click)="hideForgotPasswordModal()">
+      <my-global-icon iconName="cross"></my-global-icon>
+    </button>
   </div>
 
   <div class="modal-body text-start">

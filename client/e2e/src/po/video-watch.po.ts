@@ -9,11 +9,12 @@ export class VideoWatchPage {
   waitWatchVideoName (videoName: string) {
     if (this.isSafari) return browserSleep(5000)
 
-    // On mobile we display the first node, on desktop the second
+    // On mobile we display the first node, on desktop the second one
     const index = this.isMobileDevice ? 0 : 1
 
     return browser.waitUntil(async () => {
-      return (await $$('.video-info .video-info-name')[index].getText()).includes(videoName)
+      return await $('.video-info .video-info-name').isExisting() &&
+        (await $$('.video-info .video-info-name')[index].getText()).includes(videoName)
     })
   }
 
@@ -43,17 +44,23 @@ export class VideoWatchPage {
     return $('my-privacy-concerns').isDisplayed()
   }
 
-  async goOnAssociatedEmbed () {
+  async goOnAssociatedEmbed (passwordProtected = false) {
     let url = await browser.getUrl()
     url = url.replace('/w/', '/videos/embed/')
     url = url.replace(':3333', ':9001')
 
     await go(url)
-    await this.waitEmbedForDisplayed()
+
+    if (passwordProtected) await this.waitEmbedForVideoPasswordForm()
+    else await this.waitEmbedForDisplayed()
   }
 
   waitEmbedForDisplayed () {
     return $('.vjs-big-play-button').waitForDisplayed()
+  }
+
+  waitEmbedForVideoPasswordForm () {
+    return $('#video-password-input').waitForDisplayed()
   }
 
   isEmbedWarningDisplayed () {
@@ -137,5 +144,79 @@ export class VideoWatchPage {
     })
 
     return elem()
+  }
+
+  isPasswordProtected () {
+    return $('#confirmInput').isExisting()
+  }
+
+  async fillVideoPassword (videoPassword: string) {
+    const videoPasswordInput = await $('input#confirmInput')
+    await videoPasswordInput.waitForClickable()
+    await videoPasswordInput.clearValue()
+    await videoPasswordInput.setValue(videoPassword)
+
+    const confirmButton = await $('input[value="Confirm"]')
+    await confirmButton.waitForClickable()
+    return confirmButton.click()
+  }
+
+  async like () {
+    const likeButton = await $('.action-button-like')
+    const isActivated = (await likeButton.getAttribute('class')).includes('activated')
+
+    let count: number
+    try {
+      count = parseInt(await $('.action-button-like > .count').getText())
+    } catch (error) {
+      count = 0
+    }
+
+    await likeButton.waitForClickable()
+    await likeButton.click()
+
+    if (isActivated) {
+      if (count === 1) {
+        return expect(!await $('.action-button-like > .count').isExisting())
+      } else {
+        return expect(parseInt(await $('.action-button-like > .count').getText())).toBe(count - 1)
+      }
+    } else {
+      return expect(parseInt(await $('.action-button-like > .count').getText())).toBe(count + 1)
+    }
+  }
+
+  async createThread (comment: string) {
+    const textarea = await $('my-video-comment-add textarea')
+    await textarea.waitForClickable()
+
+    await textarea.setValue(comment)
+
+    const confirmButton = await $('.comment-buttons .orange-button')
+    await confirmButton.waitForClickable()
+    await confirmButton.click()
+
+    const createdComment = await (await $('.comment-html p')).getText()
+
+    return expect(createdComment).toBe(comment)
+  }
+
+  async createReply (comment: string) {
+    const replyButton = await $('button.comment-action-reply')
+    await replyButton.waitForClickable()
+    await replyButton.scrollIntoView()
+    await replyButton.click()
+
+    const textarea = await $('my-video-comment my-video-comment-add textarea')
+    await textarea.waitForClickable()
+    await textarea.setValue(comment)
+
+    const confirmButton = await $('my-video-comment .comment-buttons .orange-button')
+    await confirmButton.waitForClickable()
+    await confirmButton.click()
+
+    const createdComment = await (await $('.is-child .comment-html p')).getText()
+
+    return expect(createdComment).toBe(comment)
   }
 }

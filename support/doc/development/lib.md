@@ -5,7 +5,7 @@
 ### Build & Publish
 
 ```
-cd client/src/standalone/player/
+cd client/src/standalone/embed-player-api/
 npm run build
 npm publish --access=public
 ```
@@ -18,7 +18,7 @@ The complete types package is generated via:
 
 ```
 npm run generate-types-package 4.x.x
-cd packages/types/dist
+cd packages/types-generator/dist
 npm publish --access=public
 ```
 

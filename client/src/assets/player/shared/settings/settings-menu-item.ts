@@ -1,3 +1,4 @@
+import debug from 'debug'
 import videojs from 'video.js'
 import { toTitleCase } from '../common'
 import { SettingsDialog } from './settings-dialog'
@@ -5,8 +6,16 @@ import { SettingsButton } from './settings-menu-button'
 import { SettingsPanel } from './settings-panel'
 import { SettingsPanelChild } from './settings-panel-child'
 
+const debugLogger = debug('peertube:player:settings')
+
 const MenuItem = videojs.getComponent('MenuItem')
-const component = videojs.getComponent('Component')
+const Component = videojs.getComponent('Component')
+
+interface MenuItemExtended extends videojs.MenuItem {
+  isSelected_: boolean
+
+  getLabel?: () => string
+}
 
 export interface SettingsMenuItemOptions extends videojs.MenuItemOptions {
   entry: string
@@ -70,23 +79,34 @@ class SettingsMenuItem extends MenuItem {
         this.build()
 
         // Update on rate change
-        player.on('ratechange', this.submenuClickHandler)
+        if (subMenuName === 'PlaybackRateMenuButton') {
+          player.on('ratechange', this.submenuClickHandler)
+        }
 
         if (subMenuName === 'CaptionsButton') {
-          // Hack to regenerate captions on HTTP fallback
-          player.on('captionsChanged', () => {
-            setTimeout(() => {
-              this.settingsSubMenuEl_.innerHTML = ''
-              this.settingsSubMenuEl_.appendChild(this.subMenu.menu.el())
-              this.update()
-              this.bindClickEvents()
-            }, 0)
+          player.on('captions-changed', () => {
+            setTimeout(() => this.rebuildAfterMenuChange())
+          })
+
+          // Needed because 'captions-changed' event doesn't contain the selected caption yet
+          player.on('texttrackchange', this.submenuClickHandler)
+        }
+
+        if (subMenuName === 'ResolutionMenuButton') {
+          this.subMenu.on('resolution-menu-changed', () => {
+            this.rebuildAfterMenuChange()
           })
         }
 
         this.reset()
       }, 0)
     })
+  }
+
+  dispose () {
+    this.settingsSubMenuEl_.removeEventListener('transitionend', this.transitionEndHandler)
+
+    super.dispose()
   }
 
   eventHandlers () {
@@ -190,27 +210,6 @@ class SettingsMenuItem extends MenuItem {
     (button.el() as HTMLElement).innerHTML = this.player().localize(this.subMenu.controlText())
   }
 
-  /**
-   * Add/remove prefixed event listener for CSS Transition
-   *
-   * @method PrefixedEvent
-   */
-  PrefixedEvent (element: any, type: any, callback: any, action = 'addEvent') {
-    const prefix = [ 'webkit', 'moz', 'MS', 'o', '' ]
-
-    for (let p = 0; p < prefix.length; p++) {
-      if (!prefix[p]) {
-        type = type.toLowerCase()
-      }
-
-      if (action === 'addEvent') {
-        element.addEventListener(prefix[p] + type, callback, false)
-      } else if (action === 'removeEvent') {
-        element.removeEventListener(prefix[p] + type, callback, false)
-      }
-    }
-  }
-
   onTransitionEnd (event: any) {
     if (event.propertyName !== 'margin-right') {
       return
@@ -254,12 +253,7 @@ class SettingsMenuItem extends MenuItem {
   }
 
   build () {
-    this.subMenu.on('labelUpdated', () => {
-      this.update()
-    })
-    this.subMenu.on('menuChanged', () => {
-      this.bindClickEvents()
-      this.setSize()
+    this.subMenu.on('label-updated', () => {
       this.update()
     })
 
@@ -272,53 +266,41 @@ class SettingsMenuItem extends MenuItem {
     this.setSize()
     this.bindClickEvents()
 
-    // prefixed event listeners for CSS TransitionEnd
-    this.PrefixedEvent(
-      this.settingsSubMenuEl_,
-      'TransitionEnd',
-      this.transitionEndHandler,
-      'addEvent'
-    )
+    this.settingsSubMenuEl_.addEventListener('transitionend', this.transitionEndHandler, false)
   }
 
   update (event?: any) {
-    let target: HTMLElement = null
-    const subMenu = this.subMenu.name()
+    // Playback rate menu button doesn't get a vjs-selected class
+    // or sets options_['selected'] on the selected playback rate.
+    // Thus we get the submenu value based on the labelEl of playbackRateMenuButton
+    if (this.subMenu.name() === 'PlaybackRateMenuButton') {
+      this.settingsSubMenuValueEl_.innerHTML = (this.subMenu as any).labelEl_.textContent
+    } else {
+      // Loop through the submenu items to find the selected child
+      for (const subMenuItem of this.subMenu.menu.children_) {
+        if (!(subMenuItem instanceof MenuItem)) {
+          continue
+        }
 
+        const subMenuItemExtended = subMenuItem as MenuItemExtended
+        if (subMenuItemExtended.isSelected_) {
+
+          // Prefer to use the function
+          if (typeof subMenuItemExtended.getLabel === 'function') {
+            this.settingsSubMenuValueEl_.innerHTML = subMenuItemExtended.getLabel()
+            break
+          }
+
+          this.settingsSubMenuValueEl_.innerHTML = this.player().localize(subMenuItemExtended.options_.label)
+        }
+      }
+    }
+
+    let target: HTMLElement = null
     if (event && event.type === 'tap') {
       target = event.target
     } else if (event) {
       target = event.currentTarget
-    }
-
-    // Playback rate menu button doesn't get a vjs-selected class
-    // or sets options_['selected'] on the selected playback rate.
-    // Thus we get the submenu value based on the labelEl of playbackRateMenuButton
-    if (subMenu === 'PlaybackRateMenuButton') {
-      const html = (this.subMenu as any).labelEl_.innerHTML
-
-      setTimeout(() => {
-        this.settingsSubMenuValueEl_.innerHTML = html
-      }, 250)
-    } else {
-      // Loop through the submenu items to find the selected child
-      for (const subMenuItem of this.subMenu.menu.children_) {
-        if (!(subMenuItem instanceof component)) {
-          continue
-        }
-
-        if (subMenuItem.hasClass('vjs-selected')) {
-          const subMenuItemUntyped = subMenuItem as any
-
-          // Prefer to use the function
-          if (typeof subMenuItemUntyped.getLabel === 'function') {
-            this.settingsSubMenuValueEl_.innerHTML = subMenuItemUntyped.getLabel()
-            break
-          }
-
-          this.settingsSubMenuValueEl_.innerHTML = this.player().localize(subMenuItemUntyped.options_.label)
-        }
-      }
     }
 
     if (target && !target.classList.contains('vjs-back-button')) {
@@ -328,7 +310,7 @@ class SettingsMenuItem extends MenuItem {
 
   bindClickEvents () {
     for (const item of this.subMenu.menu.children()) {
-      if (!(item instanceof component)) {
+      if (!(item instanceof Component)) {
         continue
       }
       item.on([ 'tap', 'click' ], this.submenuClickHandler)
@@ -367,6 +349,17 @@ class SettingsMenuItem extends MenuItem {
       videojs.dom.addClass(this.settingsSubMenuEl_, 'vjs-hidden')
       videojs.dom.removeClass(this.el(), 'open')
     }
+  }
+
+  private rebuildAfterMenuChange () {
+    debugLogger('Rebuilding menu ' + this.subMenu.name() + ' after change')
+
+    this.settingsSubMenuEl_.innerHTML = ''
+    this.settingsSubMenuEl_.appendChild(this.subMenu.menu.el())
+    this.update()
+    this.createBackButton()
+    this.setSize()
+    this.bindClickEvents()
   }
 
 }

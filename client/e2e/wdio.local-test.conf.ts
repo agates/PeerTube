@@ -28,7 +28,7 @@ module.exports = {
         'browserName': 'chrome',
         'acceptInsecureCerts': true,
         'goog:chromeOptions': {
-          args: [ '--disable-gpu', windowSizeArg ],
+          args: [ '--headless', '--disable-gpu', windowSizeArg ],
           prefs
         }
       },
@@ -43,7 +43,7 @@ module.exports = {
       }
     ],
 
-    services: [ 'chromedriver', 'geckodriver', 'shared-store' ],
+    services: [ 'shared-store' ],
 
     beforeSession: beforeLocalSession,
     beforeSuite: beforeLocalSuite,

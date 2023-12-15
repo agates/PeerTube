@@ -2,7 +2,9 @@
   <div class="modal-header">
     <h4 i18n class="modal-title">Live information</h4>
 
-    <my-global-icon iconName="cross" aria-label="Close" role="button" (click)="dismiss()"></my-global-icon>
+    <button class="border-0 p-0" title="Close this modal" i18n-title (click)="dismiss()">
+      <my-global-icon iconName="cross"></my-global-icon>
+    </button>
   </div>
 
   <div class="modal-body" *ngIf="live">
@@ -53,7 +55,7 @@
 
       <my-edit-button
         i18n-label label="Update live settings"
-        [routerLink]="[ '/videos', 'update', video.uuid ]" (click)="dismiss()"
+        [ptRouterLink]="[ '/videos', 'update', video.uuid ]" (click)="dismiss()"
       ></my-edit-button>
     </div>
   </div>

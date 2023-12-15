@@ -2,28 +2,39 @@ import { basename } from 'path'
 import { Segment } from '@peertube/p2p-media-loader-core'
 import { logger } from '@root-helpers/logger'
 import { wait } from '@root-helpers/utils'
-import { removeQueryParams } from '@shared/core-utils'
+import { removeQueryParams } from '@peertube/peertube-core-utils'
 import { isSameOrigin } from '../common'
 
 type SegmentsJSON = { [filename: string]: string | { [byterange: string]: string } }
 
 const maxRetries = 10
 
-function segmentValidatorFactory (options: {
-  serverUrl: string
-  segmentsSha256Url: string
-  authorizationHeader: () => string
-  requiresAuth: boolean
-}) {
-  const { serverUrl, segmentsSha256Url, authorizationHeader, requiresAuth } = options
+export class SegmentValidator {
 
-  let segmentsJSON = fetchSha256Segments({ serverUrl, segmentsSha256Url, authorizationHeader, requiresAuth })
-  const regex = /bytes=(\d+)-(\d+)/
+  private readonly bytesRangeRegex = /bytes=(\d+)-(\d+)/
 
-  return async function segmentValidator (segment: Segment, _method: string, _peerId: string, retry = 1) {
+  private destroyed = false
+
+  private segmentJSONPromise: Promise<SegmentsJSON>
+
+  constructor (private readonly options: {
+    serverUrl: string
+    segmentsSha256Url: string
+    authorizationHeader: () => string
+    requiresUserAuth: boolean
+    requiresPassword: boolean
+    videoPassword: () => string
+  }) {
+  }
+
+  async validate (segment: Segment, _method: string, _peerId: string, retry = 1) {
+    if (this.destroyed) return
+
+    this.loadSha256SegmentsPromiseIfNeeded()
+
     const filename = basename(removeQueryParams(segment.url))
 
-    const segmentValue = (await segmentsJSON)[filename]
+    const segmentValue = (await this.segmentJSONPromise)[filename]
 
     if (!segmentValue && retry > maxRetries) {
       throw new Error(`Unknown segment name ${filename} in segment validator`)
@@ -34,8 +45,9 @@ function segmentValidatorFactory (options: {
 
       await wait(500)
 
-      segmentsJSON = fetchSha256Segments({ serverUrl, segmentsSha256Url, authorizationHeader, requiresAuth })
-      await segmentValidator(segment, _method, _peerId, retry + 1)
+      this.loadSha256SegmentsPromise()
+
+      await this.validate(segment, _method, _peerId, retry + 1)
 
       return
     }
@@ -46,7 +58,7 @@ function segmentValidatorFactory (options: {
     if (typeof segmentValue === 'string') {
       hashShouldBe = segmentValue
     } else {
-      const captured = regex.exec(segment.range)
+      const captured = this.bytesRangeRegex.exec(segment.range)
       range = captured[1] + '-' + captured[2]
 
       hashShouldBe = segmentValue[range]
@@ -56,7 +68,7 @@ function segmentValidatorFactory (options: {
       throw new Error(`Unknown segment name ${filename}/${range} in segment validator`)
     }
 
-    const calculatedSha = await sha256Hex(segment.data)
+    const calculatedSha = await this.sha256Hex(segment.data)
     if (calculatedSha !== hashShouldBe) {
       throw new Error(
         `Hashes does not correspond for segment ${filename}/${range}` +
@@ -64,61 +76,63 @@ function segmentValidatorFactory (options: {
       )
     }
   }
-}
 
-// ---------------------------------------------------------------------------
-
-export {
-  segmentValidatorFactory
-}
-
-// ---------------------------------------------------------------------------
-
-function fetchSha256Segments (options: {
-  serverUrl: string
-  segmentsSha256Url: string
-  authorizationHeader: () => string
-  requiresAuth: boolean
-}): Promise<SegmentsJSON> {
-  const { serverUrl, segmentsSha256Url, requiresAuth, authorizationHeader } = options
-
-  const headers = requiresAuth && isSameOrigin(serverUrl, segmentsSha256Url)
-    ? { Authorization: authorizationHeader() }
-    : {}
-
-  return fetch(segmentsSha256Url, { headers })
-    .then(res => res.json() as Promise<SegmentsJSON>)
-    .catch(err => {
-      logger.error('Cannot get sha256 segments', err)
-      return {}
-    })
-}
-
-async function sha256Hex (data?: ArrayBuffer) {
-  if (!data) return undefined
-
-  if (window.crypto.subtle) {
-    return window.crypto.subtle.digest('SHA-256', data)
-      .then(data => bufferToHex(data))
+  destroy () {
+    this.destroyed = true
   }
 
-  // Fallback for non HTTPS context
-  const shaModule = (await import('sha.js') as any).default
-  // eslint-disable-next-line new-cap
-  return new shaModule.sha256().update(Buffer.from(data)).digest('hex')
-}
+  private loadSha256SegmentsPromiseIfNeeded () {
+    if (this.segmentJSONPromise) return
 
-// Thanks: https://stackoverflow.com/a/53307879
-function bufferToHex (buffer?: ArrayBuffer) {
-  if (!buffer) return ''
+    this.loadSha256SegmentsPromise()
+  }
 
-  let s = ''
-  const h = '0123456789abcdef'
-  const o = new Uint8Array(buffer)
+  private loadSha256SegmentsPromise () {
+    this.segmentJSONPromise = this.fetchSha256Segments()
+  }
 
-  o.forEach((v: any) => {
-    s += h[v >> 4] + h[v & 15]
-  })
+  private fetchSha256Segments (): Promise<SegmentsJSON> {
+    let headers: { [ id: string ]: string } = {}
 
-  return s
+    if (isSameOrigin(this.options.serverUrl, this.options.segmentsSha256Url)) {
+      if (this.options.requiresPassword) headers = { 'x-peertube-video-password': this.options.videoPassword() }
+      else if (this.options.requiresUserAuth) headers = { Authorization: this.options.authorizationHeader() }
+    }
+
+    return fetch(this.options.segmentsSha256Url, { headers })
+      .then(res => res.json() as Promise<SegmentsJSON>)
+      .catch(err => {
+        logger.error('Cannot get sha256 segments', err)
+        return {}
+      })
+  }
+
+  private async sha256Hex (data?: ArrayBuffer) {
+    if (!data) return undefined
+
+    if (window.crypto.subtle) {
+      return window.crypto.subtle.digest('SHA-256', data)
+        .then(data => this.bufferToHex(data))
+    }
+
+    // Fallback for non HTTPS context
+    const shaModule = (await import('sha.js') as any).default
+    // eslint-disable-next-line new-cap
+    return new shaModule.sha256().update(Buffer.from(data)).digest('hex')
+  }
+
+  // Thanks: https://stackoverflow.com/a/53307879
+  private bufferToHex (buffer?: ArrayBuffer) {
+    if (!buffer) return ''
+
+    let s = ''
+    const h = '0123456789abcdef'
+    const o = new Uint8Array(buffer)
+
+    o.forEach((v: any) => {
+      s += h[v >> 4] + h[v & 15]
+    })
+
+    return s
+  }
 }

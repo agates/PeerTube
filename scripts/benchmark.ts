@@ -1,8 +1,14 @@
 import autocannon, { printResult } from 'autocannon'
 import { program } from 'commander'
-import { writeJson } from 'fs-extra'
-import { Video, VideoPrivacy } from '@shared/models'
-import { createMultipleServers, doubleFollow, killallServers, PeerTubeServer, setAccessTokensToServers } from '@shared/server-commands'
+import { writeJson } from 'fs-extra/esm'
+import { Video, VideoPrivacy } from '@peertube/peertube-models'
+import {
+  createMultipleServers,
+  doubleFollow,
+  killallServers,
+  PeerTubeServer,
+  setAccessTokensToServers
+} from '@peertube/peertube-server-commands'
 
 let servers: PeerTubeServer[]
 // First server
@@ -236,6 +242,33 @@ async function prepare () {
   servers = await createMultipleServers(3, {
     rates_limit: {
       api: {
+        max: 5_000_000
+      },
+      login: {
+        max: 5_000_000
+      },
+      signup: {
+        max: 5_000_000
+      },
+      ask_send_email: {
+        max: 5_000_000
+      },
+      receive_client_log: {
+        max: 5_000_000
+      },
+      plugins: {
+        max: 5_000_000
+      },
+      well_known: {
+        max: 5_000_000
+      },
+      feeds: {
+        max: 5_000_000
+      },
+      activity_pub: {
+        max: 5_000_000
+      },
+      client: {
         max: 5_000_000
       }
     }

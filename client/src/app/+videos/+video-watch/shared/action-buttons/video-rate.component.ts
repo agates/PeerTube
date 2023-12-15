@@ -1,9 +1,8 @@
-import { Hotkey, HotkeysService } from 'angular2-hotkeys'
 import { Observable } from 'rxjs'
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output } from '@angular/core'
-import { Notifier, ScreenService } from '@app/core'
+import { Notifier, ScreenService, Hotkey, HotkeysService } from '@app/core'
 import { VideoDetails, VideoService } from '@app/shared/shared-main'
-import { UserVideoRateType } from '@shared/models'
+import { UserVideoRateType } from '@peertube/peertube-models'
 
 @Component({
   selector: 'my-video-rate',
@@ -12,6 +11,7 @@ import { UserVideoRateType } from '@shared/models'
 })
 export class VideoRateComponent implements OnInit, OnChanges, OnDestroy {
   @Input() video: VideoDetails
+  @Input() videoPassword: string
   @Input() isUserLoggedIn: boolean
 
   @Output() userRatingLoaded = new EventEmitter<UserVideoRateType>()
@@ -40,15 +40,15 @@ export class VideoRateComponent implements OnInit, OnChanges, OnDestroy {
 
     if (this.isUserLoggedIn) {
       this.hotkeys = [
-        new Hotkey('shift+l', () => {
+        new Hotkey('Shift+l', () => {
           this.setLike()
           return false
-        }, undefined, $localize`Like the video`),
+        }, $localize`Like the video`),
 
-        new Hotkey('shift+d', () => {
+        new Hotkey('Shift+d', () => {
           this.setDislike()
           return false
-        }, undefined, $localize`Dislike the video`)
+        }, $localize`Dislike the video`)
       ]
 
       this.hotkeysService.add(this.hotkeys)
@@ -103,13 +103,13 @@ export class VideoRateComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private setRating (nextRating: UserVideoRateType) {
-    const ratingMethods: { [id in UserVideoRateType]: (id: string) => Observable<any> } = {
+    const ratingMethods: { [id in UserVideoRateType]: (id: string, videoPassword: string) => Observable<any> } = {
       like: this.videoService.setVideoLike,
       dislike: this.videoService.setVideoDislike,
       none: this.videoService.unsetVideoLike
     }
 
-    ratingMethods[nextRating].call(this.videoService, this.video.uuid)
+    ratingMethods[nextRating].call(this.videoService, this.video.uuid, this.videoPassword)
           .subscribe({
             next: () => {
               // Update the video like attribute

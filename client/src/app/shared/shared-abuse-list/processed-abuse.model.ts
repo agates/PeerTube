@@ -1,5 +1,5 @@
 import { Account } from '@app/shared/shared-main'
-import { AdminAbuse } from '@shared/models'
+import { AdminAbuse } from '@peertube/peertube-models'
 
 // Don't use an abuse model because we need external services to compute some properties
 // And this model is only used in this component
@@ -12,8 +12,7 @@ export type ProcessedAbuse = AdminAbuse & {
   reporterAccount?: Account
   flaggedAccount?: Account
 
-  truncatedCommentHtml?: string
-  commentHtml?: string
+  commentHTML?: string
 
   video: AdminAbuse['video'] & {
     channel: AdminAbuse['video']['channel'] & {

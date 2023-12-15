@@ -1,4 +1,4 @@
-import { HTMLServerConfig, Video, VideoFile } from '@shared/models'
+import { HTMLServerConfig, Video, VideoFile } from '@peertube/peertube-models'
 
 function toTitleCase (str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1)
@@ -49,20 +49,6 @@ function isMobile () {
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 }
 
-function buildVideoOrPlaylistEmbed (embedUrl: string, embedTitle: string) {
-  const iframe = document.createElement('iframe')
-
-  iframe.title = embedTitle
-  iframe.width = '560'
-  iframe.height = '315'
-  iframe.src = embedUrl
-  iframe.frameBorder = '0'
-  iframe.allowFullscreen = true
-  iframe.sandbox.add('allow-same-origin', 'allow-scripts', 'allow-popups')
-
-  return iframe.outerHTML
-}
-
 function videoFileMaxByResolution (files: VideoFile[]) {
   let max = files[0]
 
@@ -106,7 +92,6 @@ export {
   isWebRTCDisabled,
   isP2PEnabled,
 
-  buildVideoOrPlaylistEmbed,
   videoFileMaxByResolution,
   videoFileMinByResolution,
   isMobile,

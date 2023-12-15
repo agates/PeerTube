@@ -1,7 +1,9 @@
 <ng-template #modal>
   <div class="modal-header">
     <h4 class="modal-title">{{ modalTitle }}</h4>
-    <my-global-icon iconName="cross" aria-label="Close" role="button" (click)="hide()"></my-global-icon>
+    <button class="border-0 p-0" title="Close this modal" i18n-title (click)="hide()">
+      <my-global-icon iconName="cross"></my-global-icon>
+    </button>
   </div>
 
   <div class="modal-body">
@@ -41,7 +43,7 @@
             i18n-placeholder placeholder="Please describe the issue..." formControlName="reason" ngbAutofocus
             [ngClass]="{ 'input-error': formErrors['reason'] }" class="form-control"
           ></textarea>
-          <div *ngIf="formErrors.reason" class="form-error">
+          <div *ngIf="formErrors.reason" class="form-error" role="alert">
             {{ formErrors.reason }}
           </div>
         </div>

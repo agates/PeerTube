@@ -3,7 +3,7 @@ import { finalize, map, switchMap, tap } from 'rxjs/operators'
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core'
 import { MarkdownService, Notifier, UserService } from '@app/core'
 import { FindInBulkService } from '@app/shared/shared-search'
-import { VideoSortField } from '@shared/models'
+import { VideoSortField } from '@peertube/peertube-models'
 import { Video, VideoChannel, VideoService } from '../../shared-main'
 import { CustomMarkupComponent } from './shared'
 
@@ -84,7 +84,9 @@ export class ChannelMiniatureMarkupComponent implements CustomMarkupComponent, O
     return this.userService.getAnonymousOrLoggedUser()
       .pipe(
         map(user => user.nsfwPolicy),
-        switchMap(nsfwPolicy => this.videoService.getVideoChannelVideos({ ...videoOptions, nsfwPolicy }))
+        switchMap(nsfwPolicy => {
+          return this.videoService.getVideoChannelVideos({ ...videoOptions, nsfw: this.videoService.nsfwPolicyToParam(nsfwPolicy) })
+        })
       )
   }
 }

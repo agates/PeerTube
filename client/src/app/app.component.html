@@ -1,14 +1,22 @@
 <div *ngIf="customCSS" [innerHTML]="customCSS"></div>
 
-<my-hotkeys-cheatsheet></my-hotkeys-cheatsheet>
+<a i18n class="visually-hidden-focusable skip-to-content" href="#content" (click)="$event.preventDefault(); mainContent.focus()">Skip to main content</a>
 
-<div class="peertube-container" [ngClass]="{ 'user-logged-in': isUserLoggedIn(), 'user-not-logged-in': !isUserLoggedIn() }">
-  <div class="root-header">
+<my-hotkeys-cheat-sheet (hotkeysModalStateChange)="onHotkeysModalStateChange($event)"></my-hotkeys-cheat-sheet>
+
+<div
+  class="peertube-container"
+  [ngClass]="{ 'user-logged-in': isUserLoggedIn(), 'user-not-logged-in': !isUserLoggedIn(), 'hotkeys-modal-opened': hotkeysModalOpened }"
+>
+  <header class="root-header">
 
     <div class="top-left-block">
-      <span role="button" tabindex="0" [title]="getToggleTitle()" (click)="menu.toggleMenu()" (keyup.enter)="menu.toggleMenu()">
+      <button
+        class="border-0 p-0" [title]="getToggleTitle()" (click)="menu.toggleMenu()" (keyup.enter)="menu.toggleMenu()"
+        [ariaExpanded]="menu.isMenuDisplayed" aria-controls="left-menu"
+      >
         <span class="icon icon-menu"></span>
-      </span>
+      </button>
 
       <a class="peertube-title c-hand" [routerLink]="getDefaultRoute()" [queryParams]="getDefaultRouteQuery()">
         <span class="icon icon-logo"></span>
@@ -19,43 +27,47 @@
     <div class="root-header-right">
       <my-header class="w-100 d-flex justify-content-end"></my-header>
     </div>
-  </div>
+  </header>
 
   <div class="sub-header-container">
-    <my-menu *ngIf="menu.isMenuDisplayed"></my-menu>
+    <my-menu id="left-menu" role="navigation" aria-label="Main menu" i18n-ariaLabel [hidden]="!menu.isMenuDisplayed"></my-menu>
 
-    <div id="content" class="main-col" [ngClass]="{ expanded: menu.isMenuDisplayed === false }">
+    <main #mainContent tabindex="-1" id="content" class="main-col" [ngClass]="{ expanded: menu.isMenuDisplayed === false }">
 
       <div class="main-row">
 
         <div *ngIf="broadcastMessage" class="broadcast-message alert" [ngClass]="broadcastMessage.class">
           <div [innerHTML]="broadcastMessage.message"></div>
 
-          <my-global-icon
+          <button
             *ngIf="broadcastMessage.dismissable" (click)="hideBroadcastMessage()"
-            iconName="cross" role="button" title="Close this message" i18n-title
-          ></my-global-icon>
+            class="border-0" title="Close this message" i18n-title
+          >
+            <my-global-icon iconName="cross"></my-global-icon>
+          </button>
         </div>
 
         <router-outlet></router-outlet>
       </div>
-    </div>
+    </main>
   </div>
 </div>
 
-<ngx-loading-bar [includeSpinner]="false" color="var(--mainColor)"></ngx-loading-bar>
+<ngx-loading-bar [includeSpinner]="false" [color]="'var(--mainColor)'"></ngx-loading-bar>
 
 <my-confirm></my-confirm>
 
 <p-toast position="bottom-right">
   <ng-template let-message pTemplate="message">
     <div class="notification-block">
-      <div class="message">
+      <div class="message" [attr.role]="getNotificationRole(message)">
         <h3>{{ message.summary }}</h3>
         <p>{{ message.detail }}</p>
       </div>
 
-      <my-global-icon [iconName]="getNotificationIcon(message)"></my-global-icon>
+      <button class="border-0 p-0">
+        <my-global-icon [iconName]="getNotificationIcon(message)"></my-global-icon>
+      </button>
     </div>
   </ng-template>
 </p-toast>

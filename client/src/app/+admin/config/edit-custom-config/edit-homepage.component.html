@@ -19,9 +19,10 @@
             name="instanceCustomHomepageContent" formControlName="content"
             [customMarkdownRenderer]="getCustomMarkdownRenderer()" [debounceTime]="500"
             [formError]="formErrors['instanceCustomHomepage.content']"
+            dir="ltr"
           ></my-markdown-textarea>
 
-          <div *ngIf="formErrors.instanceCustomHomepage.content" class="form-error">{{ formErrors.instanceCustomHomepage.content }}</div>
+          <div *ngIf="formErrors.instanceCustomHomepage.content" class="form-error" role="alert">{{ formErrors.instanceCustomHomepage.content }}</div>
         </div>
       </div>
     </div>

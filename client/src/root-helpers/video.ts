@@ -1,4 +1,4 @@
-import { HTMLServerConfig, Video, VideoPrivacy } from '@shared/models'
+import { HTMLServerConfig, Video, VideoPrivacy, VideoPrivacyType } from '@peertube/peertube-models'
 
 function buildVideoOrPlaylistEmbed (options: {
   embedUrl: string
@@ -41,14 +41,21 @@ function isP2PEnabled (video: Video, config: HTMLServerConfig, userP2PEnabled: b
   return userP2PEnabled
 }
 
-function videoRequiresAuth (video: Video) {
-  return new Set([ VideoPrivacy.PRIVATE, VideoPrivacy.INTERNAL ]).has(video.privacy.id)
+function videoRequiresUserAuth (video: Video, videoPassword?: string) {
+  return new Set<VideoPrivacyType>([ VideoPrivacy.PRIVATE, VideoPrivacy.INTERNAL ]).has(video.privacy.id) ||
+    (video.privacy.id === VideoPrivacy.PASSWORD_PROTECTED && !videoPassword)
+
+}
+
+function videoRequiresFileToken (video: Video) {
+  return new Set<VideoPrivacyType>([ VideoPrivacy.PRIVATE, VideoPrivacy.INTERNAL, VideoPrivacy.PASSWORD_PROTECTED ]).has(video.privacy.id)
 }
 
 export {
   buildVideoOrPlaylistEmbed,
   isP2PEnabled,
-  videoRequiresAuth
+  videoRequiresUserAuth,
+  videoRequiresFileToken
 }
 
 // ---------------------------------------------------------------------------

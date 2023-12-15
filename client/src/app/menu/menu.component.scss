@@ -6,6 +6,23 @@ $menu-link-icon-size: 22px;
 $menu-link-icon-margin-right: 18px;
 $footer-links-base-opacity: .8;
 
+ul {
+  margin: 0;
+  padding: 0;
+
+  li {
+    list-style: none;
+    width: 100%;
+  }
+}
+
+.footer-bottom {
+  li {
+    width: auto;
+    display: inline-flex;
+  }
+}
+
 .menu-link {
   @include disable-default-a-behaviour;
   @include padding-left($menu-lateral-padding);
@@ -50,7 +67,7 @@ $footer-links-base-opacity: .8;
   scrollbar-color: pvar(--actionButtonColor) pvar(--menuBackgroundColor);
 }
 
-menu {
+nav {
   @include ellipsis;
 
   background-color: pvar(--menuBackgroundColor);
@@ -238,16 +255,6 @@ my-actor-avatar {
 
 .login-buttons-block {
   margin: 30px 25px 35px;
-
-  > a,
-  > my-login-link {
-    display: block;
-    width: 100%;
-
-    &:not(:last-child) {
-      margin-bottom: 10px;
-    }
-  }
 }
 
 .create-account-button {
@@ -289,11 +296,6 @@ my-actor-avatar {
 }
 
 .footer-links {
-  > div {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
   a,
   button {
     @include margin-right(8px);
@@ -365,7 +367,7 @@ my-actor-avatar {
   .menu-wrapper {
     width: 100% !important;
 
-    menu {
+    nav {
       overflow-y: auto;
     }
   }

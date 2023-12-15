@@ -1,4 +1,3 @@
-
 import omit from 'lodash-es/omit'
 import { forkJoin } from 'rxjs'
 import { SelectOptionsItem } from 'src/types/select-options-item.model'
@@ -9,8 +8,7 @@ import { Notifier } from '@app/core'
 import { ServerService } from '@app/core/server/server.service'
 import {
   ADMIN_EMAIL_VALIDATOR,
-  CACHE_CAPTIONS_SIZE_VALIDATOR,
-  CACHE_PREVIEWS_SIZE_VALIDATOR,
+  CACHE_SIZE_VALIDATOR,
   CONCURRENCY_VALIDATOR,
   INDEX_URL_VALIDATOR,
   INSTANCE_NAME_VALIDATOR,
@@ -28,7 +26,7 @@ import {
 import { USER_VIDEO_QUOTA_DAILY_VALIDATOR, USER_VIDEO_QUOTA_VALIDATOR } from '@app/shared/form-validators/user-validators'
 import { FormReactive, FormReactiveService } from '@app/shared/shared-forms'
 import { CustomPageService } from '@app/shared/shared-main/custom-page'
-import { CustomConfig, CustomPage, HTMLServerConfig } from '@shared/models'
+import { CustomConfig, CustomPage, HTMLServerConfig } from '@peertube/peertube-models'
 import { EditConfigurationService } from './edit-configuration.service'
 
 type ComponentCustomConfig = CustomConfig & {
@@ -120,13 +118,16 @@ export class EditCustomConfigComponent extends FormReactive implements OnInit {
       },
       cache: {
         previews: {
-          size: CACHE_PREVIEWS_SIZE_VALIDATOR
+          size: CACHE_SIZE_VALIDATOR
         },
         captions: {
-          size: CACHE_CAPTIONS_SIZE_VALIDATOR
+          size: CACHE_SIZE_VALIDATOR
         },
         torrents: {
-          size: CACHE_CAPTIONS_SIZE_VALIDATOR
+          size: CACHE_SIZE_VALIDATOR
+        },
+        storyboards: {
+          size: CACHE_SIZE_VALIDATOR
         }
       },
       signup: {
@@ -188,7 +189,7 @@ export class EditCustomConfigComponent extends FormReactive implements OnInit {
         hls: {
           enabled: null
         },
-        webtorrent: {
+        webVideos: {
           enabled: null
         },
         remoteRunners: {
@@ -220,6 +221,11 @@ export class EditCustomConfigComponent extends FormReactive implements OnInit {
       videoStudio: {
         enabled: null,
         remoteRunners: {
+          enabled: null
+        }
+      },
+      videoFile: {
+        update: {
           enabled: null
         }
       },

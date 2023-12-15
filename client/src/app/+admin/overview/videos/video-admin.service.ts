@@ -5,8 +5,8 @@ import { Injectable } from '@angular/core'
 import { RestExtractor, RestPagination, RestService } from '@app/core'
 import { AdvancedInputFilter } from '@app/shared/shared-forms'
 import { CommonVideoParams, Video, VideoService } from '@app/shared/shared-main'
-import { ResultList, VideoInclude, VideoPrivacy } from '@shared/models'
-import { getAllPrivacies } from '@shared/core-utils'
+import { ResultList, VideoInclude, VideoPrivacy } from '@peertube/peertube-models'
+import { getAllPrivacies } from '@peertube/peertube-core-utils'
 
 @Injectable()
 export class VideoAdminService {
@@ -59,12 +59,12 @@ export class VideoAdminService {
         title: $localize`Video files`,
         children: [
           {
-            value: 'webtorrent:true isLocal:true',
-            label: $localize`With WebTorrent`
+            value: 'webVideos:true isLocal:true',
+            label: $localize`With Web Videos`
           },
           {
-            value: 'webtorrent:false isLocal:true',
-            label: $localize`Without WebTorrent`
+            value: 'webVideos:false isLocal:true',
+            label: $localize`Without Web Videos`
           },
           {
             value: 'hls:true isLocal:true',
@@ -126,8 +126,8 @@ export class VideoAdminService {
         prefix: 'hls:',
         isBoolean: true
       },
-      hasWebtorrentFiles: {
-        prefix: 'webtorrent:',
+      hasWebVideoFiles: {
+        prefix: 'webVideos:',
         isBoolean: true
       },
       isLive: {
@@ -151,7 +151,7 @@ export class VideoAdminService {
     }
 
     if (filters.excludePublic) {
-      privacyOneOf = [ VideoPrivacy.PRIVATE, VideoPrivacy.UNLISTED, VideoPrivacy.INTERNAL ]
+      privacyOneOf = [ VideoPrivacy.PRIVATE, VideoPrivacy.UNLISTED, VideoPrivacy.INTERNAL, VideoPrivacy.PASSWORD_PROTECTED ]
 
       filters.excludePublic = undefined
     }

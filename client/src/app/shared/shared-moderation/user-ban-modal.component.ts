@@ -1,11 +1,11 @@
 import { forkJoin } from 'rxjs'
 import { Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core'
 import { Notifier } from '@app/core'
-import { prepareIcu } from '@app/helpers'
+import { formatICU } from '@app/helpers'
 import { FormReactive, FormReactiveService } from '@app/shared/shared-forms'
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap'
 import { NgbModalRef } from '@ng-bootstrap/ng-bootstrap/modal/modal-ref'
-import { User } from '@shared/models'
+import { User } from '@peertube/peertube-models'
 import { USER_BAN_REASON_VALIDATOR } from '../form-validators/user-validators'
 import { Account } from '../shared-main'
 import { UserAdminService } from '../shared-users'
@@ -67,9 +67,9 @@ export class UserBanModalComponent extends FormReactive implements OnInit {
           let message: string
 
           if (Array.isArray(this.usersToBan)) {
-            message = prepareIcu($localize`{count, plural, =1 {1 user banned.} other {{count} users banned.}}`)(
-              { count: this.usersToBan.length },
-              $localize`${this.usersToBan.length} users banned.`
+            message = formatICU(
+              $localize`{count, plural, =1 {1 user banned.} other {{count} users banned.}}`,
+              { count: this.usersToBan.length }
             )
           } else {
             message = $localize`User ${this.usersToBan.username} banned.`
@@ -88,9 +88,9 @@ export class UserBanModalComponent extends FormReactive implements OnInit {
 
   getModalTitle () {
     if (Array.isArray(this.usersToBan)) {
-      return prepareIcu($localize`Ban {count, plural, =1 {1 user} other {{count} users}}`)(
-        { count: this.usersToBan.length },
-        $localize`Ban ${this.usersToBan.length} users`
+      return formatICU(
+        $localize`Ban {count, plural, =1 {1 user} other {{count} users}}`,
+        { count: this.usersToBan.length }
       )
     }
 

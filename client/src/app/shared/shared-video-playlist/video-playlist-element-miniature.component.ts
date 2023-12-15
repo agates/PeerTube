@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, In
 import { AuthService, Notifier, ServerService } from '@app/core'
 import { Video, VideoService } from '@app/shared/shared-main'
 import { NgbDropdown } from '@ng-bootstrap/ng-bootstrap'
-import { secondsToTime } from '@shared/core-utils'
-import { HTMLServerConfig, VideoPlaylistElementType, VideoPlaylistElementUpdate, VideoPrivacy } from '@shared/models'
+import { secondsToTime } from '@peertube/peertube-core-utils'
+import { HTMLServerConfig, VideoPlaylistElementType, VideoPlaylistElementUpdate, VideoPrivacy } from '@peertube/peertube-models'
 import { VideoPlaylistElement } from './video-playlist-element.model'
 import { VideoPlaylist } from './video-playlist.model'
 import { VideoPlaylistService } from './video-playlist.service'
@@ -52,12 +52,20 @@ export class VideoPlaylistElementMiniatureComponent implements OnInit {
     this.serverConfig = this.serverService.getHTMLConfig()
   }
 
+  getVideoAriaLabel () {
+    return $localize`Watch video ${this.playlistElement.video.name}`
+  }
+
   getVideoOwnerDisplayType (element: VideoPlaylistElement) {
     return this.videoService.buildDefaultOwnerDisplayType(element.video)
   }
 
   isVideoPrivate () {
     return this.playlistElement.video.privacy.id === VideoPrivacy.PRIVATE
+  }
+
+  isVideoPasswordProtected () {
+    return this.playlistElement.video.privacy.id === VideoPrivacy.PASSWORD_PROTECTED
   }
 
   isUnavailable (e: VideoPlaylistElement) {

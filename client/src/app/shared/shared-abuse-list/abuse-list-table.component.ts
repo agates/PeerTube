@@ -1,5 +1,4 @@
 import * as debug from 'debug'
-import truncate from 'lodash-es/truncate'
 import { SortMeta } from 'primeng/api'
 import { Component, Input, OnInit, ViewChild } from '@angular/core'
 import { ActivatedRoute, Router } from '@angular/router'
@@ -7,8 +6,8 @@ import { ConfirmService, MarkdownService, Notifier, RestPagination, RestTable } 
 import { Account, Actor, DropdownAction, Video, VideoService } from '@app/shared/shared-main'
 import { AbuseService, BlocklistService, VideoBlockService } from '@app/shared/shared-moderation'
 import { VideoCommentService } from '@app/shared/shared-video-comment'
+import { AbuseState, AbuseStateType, AdminAbuse } from '@peertube/peertube-models'
 import { logger } from '@root-helpers/logger'
-import { AbuseState, AdminAbuse } from '@shared/models'
 import { AdvancedInputFilter } from '../shared-forms'
 import { AbuseMessageModalComponent } from './abuse-message-modal.component'
 import { ModerationCommentModalComponent } from './moderation-comment-modal.component'
@@ -144,7 +143,7 @@ export class AbuseListTableComponent extends RestTable implements OnInit {
       })
   }
 
-  updateAbuseState (abuse: AdminAbuse, state: AbuseState) {
+  updateAbuseState (abuse: AdminAbuse, state: AbuseStateType) {
     this.abuseService.updateAbuse(abuse, { state })
       .subscribe({
         next: () => this.reloadData(),
@@ -211,11 +210,9 @@ export class AbuseListTableComponent extends RestTable implements OnInit {
 
           if (abuse.comment) {
             if (abuse.comment.deleted) {
-              abuse.truncatedCommentHtml = abuse.commentHtml = $localize`Deleted comment`
+              abuse.commentHTML = $localize`Deleted comment`
             } else {
-              const truncated = truncate(abuse.comment.text, { length: 100 })
-              abuse.truncatedCommentHtml = await this.markdownRenderer.textMarkdownToHTML({ markdown: truncated, withHtml: true })
-              abuse.commentHtml = await this.markdownRenderer.textMarkdownToHTML({ markdown: abuse.comment.text, withHtml: true })
+              abuse.commentHTML = await this.markdownRenderer.textMarkdownToHTML({ markdown: abuse.comment.text, withHtml: true })
             }
           }
 

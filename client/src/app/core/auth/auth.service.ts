@@ -1,4 +1,4 @@
-import { Hotkey, HotkeysService } from 'angular2-hotkeys'
+import { Hotkey, HotkeysService } from '@app/core'
 import { Observable, ReplaySubject, Subject, throwError as observableThrowError } from 'rxjs'
 import { catchError, map, mergeMap, share, tap } from 'rxjs/operators'
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http'
@@ -6,7 +6,7 @@ import { Injectable } from '@angular/core'
 import { Router } from '@angular/router'
 import { Notifier } from '@app/core/notification/notifier.service'
 import { logger, OAuthUserTokens, objectToUrlEncoded, peertubeLocalStorage } from '@root-helpers/index'
-import { HttpStatusCode, MyUser as UserServerModel, OAuthClientLocal, User, UserLogin, UserRefreshToken } from '@shared/models'
+import { HttpStatusCode, MyUser as UserServerModel, OAuthClientLocal, User, UserLogin, UserRefreshToken } from '@peertube/peertube-models'
 import { environment } from '../../../environments/environment'
 import { RestExtractor } from '../rest/rest-extractor.service'
 import { RedirectService } from '../routing'
@@ -36,7 +36,7 @@ export class AuthService {
   loginChangedSource: Observable<AuthStatus>
   userInformationLoaded = new ReplaySubject<boolean>(1)
   tokensRefreshed = new ReplaySubject<void>(1)
-  hotkeys: Hotkey[]
+  loggedInHotkeys: Hotkey[]
 
   private clientId: string = peertubeLocalStorage.getItem(AuthService.LOCAL_STORAGE_OAUTH_CLIENT_KEYS.CLIENT_ID)
   private clientSecret: string = peertubeLocalStorage.getItem(AuthService.LOCAL_STORAGE_OAUTH_CLIENT_KEYS.CLIENT_SECRET)
@@ -56,28 +56,30 @@ export class AuthService {
     this.loginChangedSource = this.loginChanged.asObservable()
 
     // Set HotKeys
-    this.hotkeys = [
-      new Hotkey('m s', (event: KeyboardEvent): boolean => {
+    this.loggedInHotkeys = [
+      new Hotkey('m s', e => {
         this.router.navigate([ '/videos/subscriptions' ])
         return false
-      }, undefined, $localize`Go to my subscriptions`),
-      new Hotkey('m v', (event: KeyboardEvent): boolean => {
+      }, $localize`Go to my subscriptions`),
+      new Hotkey('m v', e => {
         this.router.navigate([ '/my-library/videos' ])
         return false
-      }, undefined, $localize`Go to my videos`),
-      new Hotkey('m i', (event: KeyboardEvent): boolean => {
+      }, $localize`Go to my videos`),
+      new Hotkey('m i', e => {
         this.router.navigate([ '/my-library/video-imports' ])
         return false
-      }, undefined, $localize`Go to my imports`),
-      new Hotkey('m c', (event: KeyboardEvent): boolean => {
+      }, $localize`Go to my imports`),
+      new Hotkey('m c', e => {
         this.router.navigate([ '/my-library/video-channels' ])
         return false
-      }, undefined, $localize`Go to my channels`)
+      }, $localize`Go to my channels`)
     ]
   }
 
   buildAuthUser (userInfo: Partial<User>, tokens: OAuthUserTokens) {
     this.user = new AuthUser(userInfo, tokens)
+
+    this.hotkeysService.add(this.loggedInHotkeys)
   }
 
   loadClientCredentials () {
@@ -194,8 +196,6 @@ Ensure you have correctly configured PeerTube (config/ directory), in particular
     this.user = null
 
     this.setStatus(AuthStatus.LoggedOut)
-
-    this.hotkeysService.remove(this.hotkeys)
   }
 
   refreshAccessToken () {
@@ -284,8 +284,6 @@ Ensure you have correctly configured PeerTube (config/ directory), in particular
 
     this.setStatus(AuthStatus.LoggedIn)
     this.userInformationLoaded.next(true)
-
-    this.hotkeysService.add(this.hotkeys)
   }
 
   private handleRefreshToken (obj: UserRefreshToken) {
@@ -295,5 +293,11 @@ Ensure you have correctly configured PeerTube (config/ directory), in particular
 
   private setStatus (status: AuthStatus) {
     this.loginChanged.next(status)
+
+    if (status === AuthStatus.LoggedIn) {
+      this.hotkeysService.add(this.loggedInHotkeys)
+    } else {
+      this.hotkeysService.remove(this.loggedInHotkeys)
+    }
   }
 }

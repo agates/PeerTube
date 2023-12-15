@@ -1,13 +1,25 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../dist/server"
+    "outDir": "../dist",
+    "baseUrl": "../",
+    "rootDir": ".",
+    "tsBuildInfoFile": "../dist/.tsbuildinfo",
+    "paths": {
+      "@server/*": [ "server/core/*" ]
+    }
   },
   "references": [
-    { "path": "../shared" }
+    { "path": "../packages/core-utils" },
+    { "path": "../packages/ffmpeg" },
+    { "path": "../packages/models" },
+    { "path": "../packages/node-utils" },
+    { "path": "../packages/typescript-utils" }
+  ],
+  "include": [
+    "./**/*.ts"
   ],
   "exclude": [
-    "tools/",
-    "tests/fixtures"
+    "./dist/**/*.ts"
   ]
 }

@@ -47,12 +47,13 @@ storage:
   tmp_persistent: '../data/tmp-persistent/' # As tmp but the directory is not cleaned up between PeerTube restarts
   bin: '../data/bin/'
   avatars: '../data/avatars/'
-  videos: '../data/videos/'
+  web_videos: '../data/web-videos/'
   streaming_playlists: '../data/streaming-playlists'
   redundancy: '../data/redundancy/'
   logs: '../data/logs/'
   previews: '../data/previews/'
   thumbnails: '../data/thumbnails/'
+  storyboards: '../data/storyboards/'
   torrents: '../data/torrents/'
   captions: '../data/captions/'
   cache: '../data/cache/'
@@ -69,6 +70,12 @@ storage:
   # If the file exists, peertube will serve it
   # If not, peertube will fallback to the default fil
   client_overrides: '../data/client-overrides/'
+
+
+object_storage:
+  upload_acl:
+    public: null # Set to null here because we can't using env variables
+    private: null
 
 log:
   level: 'info' # 'debug' | 'info' | 'warn' | 'error'

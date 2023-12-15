@@ -5,7 +5,7 @@ import { VideoShareComponent } from '@app/shared/shared-share-modal'
 import { SupportModalComponent } from '@app/shared/shared-support-modal'
 import { VideoActionsDisplayType, VideoDownloadComponent } from '@app/shared/shared-video-miniature'
 import { VideoPlaylist } from '@app/shared/shared-video-playlist'
-import { UserVideoRateType, VideoCaption } from '@shared/models/videos'
+import { UserVideoRateType, VideoCaption, VideoPrivacy } from '@peertube/peertube-models'
 
 @Component({
   selector: 'my-action-buttons',
@@ -18,10 +18,12 @@ export class ActionButtonsComponent implements OnInit, OnChanges {
   @ViewChild('videoDownloadModal') videoDownloadModal: VideoDownloadComponent
 
   @Input() video: VideoDetails
+  @Input() videoPassword: string
   @Input() videoCaptions: VideoCaption[]
   @Input() playlist: VideoPlaylist
 
   @Input() isUserLoggedIn: boolean
+  @Input() isUserOwner: boolean
 
   @Input() currentTime: number
   @Input() currentPlaylistPosition: number
@@ -55,7 +57,7 @@ export class ActionButtonsComponent implements OnInit, OnChanges {
   ngOnInit () {
     // Hide the tooltips for unlogged users in mobile view, this adds confusion with the popover
     if (this.isUserLoggedIn || !this.screenService.isInMobileView()) {
-      this.tooltipSupport = $localize`Support options for this video`
+      this.tooltipSupport = $localize`Open the modal to support the video uploader`
       this.tooltipSaveToPlaylist = $localize`Save to playlist`
     }
   }
@@ -91,5 +93,15 @@ export class ActionButtonsComponent implements OnInit, OnChanges {
 
   private setVideoLikesBarTooltipText () {
     this.likesBarTooltipText = `${this.video.likes} likes / ${this.video.dislikes} dislikes`
+  }
+
+  isVideoAddableToPlaylist () {
+    const isPasswordProtected = this.video.privacy.id === VideoPrivacy.PASSWORD_PROTECTED
+
+    if (!this.isUserLoggedIn) return false
+
+    if (isPasswordProtected) return this.isUserOwner
+
+    return true
   }
 }
